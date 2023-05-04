@@ -12,13 +12,19 @@ import android.util.Log
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.app.ActivityCompat
 import androidx.activity.ComponentActivity
+import kotlin.math.abs
+import kotlin.math.log10
 
 
 object Meter {
     private val TAG = Meter::class.simpleName
 
-    const val SAMPLE_RATE = 44100
-    val BUFFER_SIZE = AudioRecord.getMinBufferSize(SAMPLE_RATE, AudioFormat.CHANNEL_IN_STEREO, AudioFormat.ENCODING_PCM_16BIT)
+    private const val AUDIO_SOURCE = MediaRecorder.AudioSource.UNPROCESSED
+    private const val SAMPLE_RATE = 44100
+    private const val CHANNEL_CONFIG = AudioFormat.CHANNEL_IN_STEREO
+    private const val AUDIO_FORMAT = AudioFormat.ENCODING_PCM_16BIT
+    private const val BUFFER_SIZE_FACTOR = 2    // under load this will guarantee a smooth recording
+    val BUFFER_SIZE = AudioRecord.getMinBufferSize(SAMPLE_RATE, CHANNEL_CONFIG, AUDIO_FORMAT) * BUFFER_SIZE_FACTOR
 
     @SuppressLint("MissingPermission")  // already checked in MainActivity (TODO or move here)
     fun initMeter(activity: ComponentActivity) : AudioRecord {
@@ -57,35 +63,36 @@ object Meter {
             //                                          int[] grantResults)
             // to handle the case where the user grants the permission. See the documentation
             // for ActivityCompat#requestPermissions for more details.
-            Log.d(TAG, "No permissions 2")
+
+            if (ActivityCompat.shouldShowRequestPermissionRationale(activity,
+                    Manifest.permission.CAMERA))
+            { // Show dialog to the user explaining why the permission is required
+            }
+
+            Log.d(TAG, "No permissions 2")  // TODO write in string ?
             requestPermissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
 //                        return
         }
 
-        return AudioRecord(MediaRecorder.AudioSource.UNPROCESSED, SAMPLE_RATE, AudioFormat.CHANNEL_IN_STEREO, AudioFormat.ENCODING_PCM_16BIT, BUFFER_SIZE)
+        return AudioRecord(AUDIO_SOURCE, SAMPLE_RATE, CHANNEL_CONFIG, AUDIO_FORMAT, BUFFER_SIZE)
     }
 
-    fun measureNow(meter: AudioRecord) : List<Any> {
-        val buf = soundMeter(meter)
+    fun measureNow(meter: AudioRecord) : List<Double> {
+        val readVals = readLeftRightMeter(meter)
 
-        /*var str : String = "[ "
-        for (j in buf)
-            str += "$j, "
-        str += "]"*/
+        val leftMean = readVals[0].average()
+        val rightMean = readVals[1].average()
+//        Log.d(TAG, "raw: $mean")
 
-        val mean = buf.average()
+        val leftdB = PCMtoDB(leftMean)
+        val rightdB = PCMtoDB(rightMean)
+        Log.d(TAG, "left dB: $leftdB")
+        Log.d(TAG, "rightdB: $rightdB")
+        return listOf(leftdB, rightdB)
 
-//    val dB = PCMtoDB(buf[0])
-        val dB = PCMtoDB(mean)
-//    Log.d("measureNow", str)
-        Log.d(TAG, "raw: $mean")
-        Log.d(TAG, "dB: $dB")
-        return listOf(dB, mean)
-
-        // TODO separate left and right channels
     }
 
-    fun soundMeter(meter: AudioRecord) : ShortArray {
+    fun readLeftRightMeter(meter: AudioRecord) : List<ShortArray> {
         var buf : ShortArray = ShortArray(BUFFER_SIZE)
         var readN = 0
 
@@ -95,15 +102,26 @@ object Meter {
         }catch (e: Exception){
             Log.d(TAG, e.toString())
         }
-        return buf
+
+        val left = buf.filter { it % 2 == 0 }.toShortArray()
+        val right = buf.filter { it % 2 == 1 }.toShortArray()
+
+        return listOf(left, right)
     }
 
-    /*companion object {
-        private val TAG = Meter::class.simpleName
-
-        const val SAMPLE_RATE = 44100
-        val BUFFER_SIZE = AudioRecord.getMinBufferSize(SAMPLE_RATE, AudioFormat.CHANNEL_IN_STEREO, AudioFormat.ENCODING_PCM_16BIT)
+    fun PCMtoDB(pcm: Number) : Double {
+//    return 20 * log10(abs(pcm.toDouble()) / 32768 /51805.5336 / 20e-6)   // TODO scale? +26?
+        return 20 * log10((abs(pcm.toDouble()) /32768) / 20e-6)   // TODO scale? +26?   //TODO HOW TO GET THE CORRECT VALUE??????????
+    }
+    /*fun PCMtoDB(samples: ShortArray) : Double {
+        var sum = 0.0
+        for (sample in samples){
+            sum += (abs(sample.toDouble()) / 32768).pow(2)
+        }
+        Log.d("PCMtoDB", "sum: $sum")
+        val rms = sqrt(sum / samples.size)
+        if (rms < 1) Log.d("PCMtoDB", "rms: $rms")
+        return 20 * log10(rms)
     }*/
-
 
 }

@@ -1,19 +1,27 @@
 package it.albertopasqualetto.soundmeteresp
 
+// min = 0 dB, max = 200 dB
+
 import it.albertopasqualetto.soundmeteresp.ui.theme.SoundMeterESPTheme
 import android.media.AudioRecord
 import android.os.Bundle
 import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.layout.*
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.ProgressIndicatorDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.rotate
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.delay
@@ -21,6 +29,19 @@ import kotlin.math.abs
 import kotlin.math.log10
 
 class MainActivity : ComponentActivity() {
+    companion object {
+        private val TAG = MainActivity::class.simpleName
+
+        const val DELAY_MS : Long = 1000
+        var meter : AudioRecord? = null
+
+        private val PROGRESS_BAR_HEIGHT = 50.dp
+        private val PROGRESS_BAR_WIDTH = 200.dp
+
+        fun dBToProgress(dB : Double) : Float {
+            return (dB.toFloat()/2)/100 // scale from 0dB-200dB to 0-1
+        }
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -57,7 +78,7 @@ class MainActivity : ComponentActivity() {
         }*/
 
 
-        var buf : ShortArray = ShortArray(Meter.SAMPLE_RATE)
+        var buf = ShortArray(Meter.BUFFER_SIZE)
 //        meter = AudioRecord(MediaRecorder.AudioSource.UNPROCESSED, Meter.SAMPLE_RATE, AudioFormat.CHANNEL_IN_STEREO, AudioFormat.ENCODING_PCM_16BIT, Meter.BUFFER_SIZE)
 //        meter.startRecording()
         try {
@@ -95,19 +116,24 @@ class MainActivity : ComponentActivity() {
         meter = null
     }
 
-    companion object {
-        private val TAG = MainActivity::class.simpleName
-
-        const val DELAY_MS : Long = 1000
-        var meter : AudioRecord? = null
-    }
-
     @Preview(showBackground = true)
     @Composable
     fun AppContent(){
         var measuring : Boolean by remember { mutableStateOf(false) }
-        var db by remember { mutableStateOf("Waiting dB...") }
-        var t by remember { mutableStateOf("Waiting raw...") }
+        var leftdb by remember { mutableStateOf("Waiting left dB...") }
+        var rightdb by remember { mutableStateOf("Waiting right dB...") }
+
+        var progressLeft by remember { mutableStateOf(0.0f) }
+        val animatedProgressLeft by animateFloatAsState(
+            targetValue = progressLeft,
+            animationSpec = ProgressIndicatorDefaults.ProgressAnimationSpec
+        )
+        var progressRight by remember { mutableStateOf(0.0f) }
+        val animatedProgressRight by animateFloatAsState(
+            targetValue = progressRight,
+            animationSpec = ProgressIndicatorDefaults.ProgressAnimationSpec
+        )
+
     //    var textSize by remember { mutableStateOf(20.sp) }
         Column(modifier = Modifier.fillMaxSize(), horizontalAlignment = Alignment.CenterHorizontally){
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -115,20 +141,37 @@ class MainActivity : ComponentActivity() {
                 Spacer(Modifier.width(8.dp))
                 Switch(checked = measuring, onCheckedChange = {measuring = it})
             }
-            Text(text = db)
-            Text(text = t)
 
-            /*Text(text = t.split(",")[0].replace("[", ""))
-            Text(text = t,
-                lineHeight = 17.sp,
-                fontSize = textSize,
-                onTextLayout = { textLayoutResult: TextLayoutResult ->
-                val maxCurrentLineIndex: Int = textLayoutResult.lineCount - 1
+            Spacer(Modifier.requiredHeight(50.dp))
 
-                if (textLayoutResult.hasVisualOverflow || textLayoutResult.isLineEllipsized(maxCurrentLineIndex)) {
-                    textSize = textSize.times(0.9f)
+            Row(modifier=Modifier.fillMaxSize(), verticalAlignment = Alignment.CenterVertically) {
+                Column(modifier=Modifier.fillMaxHeight(), verticalArrangement = Arrangement.SpaceEvenly, horizontalAlignment = Alignment.CenterHorizontally) {
+                    LinearProgressIndicator(
+                        modifier = Modifier
+                            .semantics(mergeDescendants = true) {}
+                            .padding(10.dp)
+                            .rotate(-90f)
+                            .requiredHeight(PROGRESS_BAR_HEIGHT)
+                            .requiredWidth(PROGRESS_BAR_WIDTH),
+                        progress = animatedProgressLeft,
+                    )
+                    Text(text = leftdb)
                 }
-            })*/
+                Column(modifier=Modifier.fillMaxHeight(), verticalArrangement = Arrangement.SpaceEvenly, horizontalAlignment = Alignment.CenterHorizontally) {
+                    LinearProgressIndicator(
+                        modifier = Modifier
+                            .semantics(mergeDescendants = true) {}
+                            .padding(10.dp)
+                            .rotate(-90f)
+                            .requiredHeight(PROGRESS_BAR_HEIGHT)
+                            .requiredWidth(PROGRESS_BAR_WIDTH),
+                        progress = animatedProgressRight,
+                    )
+                    Text(text = rightdb)
+                }
+            }
+
+
 
         }
 
@@ -140,27 +183,16 @@ class MainActivity : ComponentActivity() {
                     continue
                 }
                 val measuredVals = Meter.measureNow(meter!!)
-                db = "dB: " + measuredVals[0].toString()
-                t = "raw: " + measuredVals[1].toString()
+                leftdb = "left dB: " + measuredVals[0].toInt().toString()
+                progressLeft = dBToProgress(measuredVals[0])
+
+                rightdb = "right dB: " + measuredVals[1].toInt().toString()
+                progressRight = dBToProgress(measuredVals[1])
                 delay(DELAY_MS)
             }
         })
     }
-
 }
 
-fun PCMtoDB(pcm: Number) : Double {
-//    return 20 * log10(abs(pcm.toDouble()) / 32768 /51805.5336 / 20e-6)   // TODO scale? +26?
-    return 20 * log10((abs(pcm.toDouble()) /32768) / 20e-6)   // TODO scale? +26?   //TODO HOW TO GET THE CORRECT VALUE??????????
-}
-/*fun PCMtoDB(samples: ShortArray) : Double {
-    var sum = 0.0
-    for (sample in samples){
-        sum += (abs(sample.toDouble()) / 32768).pow(2)
-    }
-    Log.d("PCMtoDB", "sum: $sum")
-    val rms = sqrt(sum / samples.size)
-    if (rms < 1) Log.d("PCMtoDB", "rms: $rms")
-    return 20 * log10(rms)
-}*/
+
 
