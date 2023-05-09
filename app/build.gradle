@@ -49,10 +49,13 @@ android {
 dependencies {
 
     implementation 'androidx.core:core-ktx:1.10.0'
-    implementation 'androidx.activity:activity-compose:1.7.0'
+    implementation 'androidx.activity:activity-compose:1.7.1'
     implementation "androidx.compose.ui:ui:$compose_version"
     implementation "androidx.compose.ui:ui-tooling-preview:$compose_version"
     implementation "androidx.compose.material3:material3:$material3_version"
+    implementation "com.patrykandpatrick.vico:core:$vico_version"       // vico core logic for charts and other elements
+    implementation "com.patrykandpatrick.vico:compose:$vico_version"    // vico for Jetpack Compose
+    implementation "com.patrykandpatrick.vico:compose-m3:$vico_version" // vico for `compose`; creates a `ChartStyle` based on an M3 Material Theme
     testImplementation 'junit:junit:4.13.2'
     androidTestImplementation 'androidx.test.ext:junit:1.1.5'
     androidTestImplementation 'androidx.test.espresso:espresso-core:3.5.1'

@@ -20,11 +20,12 @@ object Meter {
     private val TAG = Meter::class.simpleName
 
     private const val AUDIO_SOURCE = MediaRecorder.AudioSource.UNPROCESSED
-    private const val SAMPLE_RATE = 44100
+    const val SAMPLE_RATE = 44100
     private const val CHANNEL_CONFIG = AudioFormat.CHANNEL_IN_STEREO
     private const val AUDIO_FORMAT = AudioFormat.ENCODING_PCM_16BIT
     private const val BUFFER_SIZE_FACTOR = 2    // under load this will guarantee a smooth recording
     val BUFFER_SIZE = AudioRecord.getMinBufferSize(SAMPLE_RATE, CHANNEL_CONFIG, AUDIO_FORMAT) * BUFFER_SIZE_FACTOR
+
 
     @SuppressLint("MissingPermission")  // already checked in MainActivity (TODO or move here)
     fun initMeter(activity: ComponentActivity) : AudioRecord {
@@ -77,22 +78,8 @@ object Meter {
         return AudioRecord(AUDIO_SOURCE, SAMPLE_RATE, CHANNEL_CONFIG, AUDIO_FORMAT, BUFFER_SIZE)
     }
 
-    fun measureNow(meter: AudioRecord) : List<Double> {
-        val readVals = readLeftRightMeter(meter)
 
-        val leftMean = readVals[0].average()
-        val rightMean = readVals[1].average()
-//        Log.d(TAG, "raw: $mean")
-
-        val leftdB = PCMtoDB(leftMean)
-        val rightdB = PCMtoDB(rightMean)
-        Log.d(TAG, "left dB: $leftdB")
-        Log.d(TAG, "rightdB: $rightdB")
-        return listOf(leftdB, rightdB)
-
-    }
-
-    fun readLeftRightMeter(meter: AudioRecord) : List<ShortArray> {
+    fun readLeftRightMeter(meter: AudioRecord) : List<DoubleArray> {
         var buf : ShortArray = ShortArray(BUFFER_SIZE)
         var readN = 0
 
@@ -103,8 +90,8 @@ object Meter {
             Log.d(TAG, e.toString())
         }
 
-        val left = buf.filter { it % 2 == 0 }.toShortArray()
-        val right = buf.filter { it % 2 == 1 }.toShortArray()
+        val left = buf.filter { it % 2 == 0 }.map { PCMtoDB(it) }.toDoubleArray()
+        val right = buf.filter { it % 2 == 1 }.map { PCMtoDB(it) }.toDoubleArray()
 
         return listOf(left, right)
     }

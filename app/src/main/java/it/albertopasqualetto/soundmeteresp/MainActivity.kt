@@ -15,7 +15,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.ProgressIndicatorDefaults
 import androidx.compose.material3.Surface
-import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -24,9 +23,8 @@ import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import com.patrykandpatrick.vico.core.entry.entryModelOf
 import kotlinx.coroutines.delay
-import kotlin.math.abs
-import kotlin.math.log10
 
 class MainActivity : ComponentActivity() {
     companion object {
@@ -42,6 +40,9 @@ class MainActivity : ComponentActivity() {
             return (dB.toFloat()/2)/100 // scale from 0dB-200dB to 0-1
         }
     }
+
+    private var recorderThread : Thread? = null
+
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -79,8 +80,7 @@ class MainActivity : ComponentActivity() {
 
 
         var buf = ShortArray(Meter.BUFFER_SIZE)
-//        meter = AudioRecord(MediaRecorder.AudioSource.UNPROCESSED, Meter.SAMPLE_RATE, AudioFormat.CHANNEL_IN_STEREO, AudioFormat.ENCODING_PCM_16BIT, Meter.BUFFER_SIZE)
-//        meter.startRecording()
+
         try {
             meter = Meter.initMeter(this)
         } catch (e: Exception) {    // TODO handle no permission
@@ -101,6 +101,7 @@ class MainActivity : ComponentActivity() {
 
     override fun onPause() {
         super.onPause()
+        recorderThread = null
         if (meter?.state == AudioRecord.STATE_INITIALIZED && meter?.recordingState == AudioRecord.RECORDSTATE_RECORDING) meter?.stop() ?: Log.d(TAG, "onPause: meter is not recording")
     }
 
@@ -119,7 +120,6 @@ class MainActivity : ComponentActivity() {
     @Preview(showBackground = true)
     @Composable
     fun AppContent(){
-        var measuring : Boolean by remember { mutableStateOf(false) }
         var leftdb by remember { mutableStateOf("Waiting left dB...") }
         var rightdb by remember { mutableStateOf("Waiting right dB...") }
 
@@ -134,15 +134,11 @@ class MainActivity : ComponentActivity() {
             animationSpec = ProgressIndicatorDefaults.ProgressAnimationSpec
         )
 
-    //    var textSize by remember { mutableStateOf(20.sp) }
-        Column(modifier = Modifier.fillMaxSize(), horizontalAlignment = Alignment.CenterHorizontally){
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(text = "Measure:")
-                Spacer(Modifier.width(8.dp))
-                Switch(checked = measuring, onCheckedChange = {measuring = it})
-            }
+        var chartEntryModelLeft by remember { mutableStateOf(entryModelOf(4f, 12f, 8f, 16f)) }
 
-            Spacer(Modifier.requiredHeight(50.dp))
+
+        Column(modifier = Modifier.fillMaxSize(), horizontalAlignment = Alignment.CenterHorizontally){
+
 
             Row(modifier=Modifier.fillMaxSize(), verticalAlignment = Alignment.CenterVertically) {
                 Column(modifier=Modifier.fillMaxHeight(), verticalArrangement = Arrangement.SpaceEvenly, horizontalAlignment = Alignment.CenterHorizontally) {
@@ -156,6 +152,14 @@ class MainActivity : ComponentActivity() {
                         progress = animatedProgressLeft,
                     )
                     Text(text = leftdb)
+                    /*ProvideChartStyle(m3ChartStyle()) {
+                        Chart(
+                            chart = lineChart(),
+                            model = chartEntryModelLeft,
+                            startAxis = startAxis(),
+                            bottomAxis = bottomAxis()
+                        )
+                    }*/
                 }
                 Column(modifier=Modifier.fillMaxHeight(), verticalArrangement = Arrangement.SpaceEvenly, horizontalAlignment = Alignment.CenterHorizontally) {
                     LinearProgressIndicator(
@@ -177,20 +181,32 @@ class MainActivity : ComponentActivity() {
 
         // auto-measure
         LaunchedEffect(key1 = Unit, block = {
+            delay(DELAY_MS*2)
+            recorderThread = Thread(RecorderRunnable(), "RecorderRunnable")
+            recorderThread!!.start()
             while (true){
-                if (!measuring) {
-                    delay(DELAY_MS)
-                    continue
-                }
-                val measuredVals = Meter.measureNow(meter!!)
-                leftdb = "left dB: " + measuredVals[0].toInt().toString()
-                progressLeft = dBToProgress(measuredVals[0])
-
-                rightdb = "right dB: " + measuredVals[1].toInt().toString()
-                progressRight = dBToProgress(measuredVals[1])
                 delay(DELAY_MS)
+                val (dBLeftMax, dBRightMax) = Values.getMaxDbLastSec()
+                Log.d(TAG, "leftMax: $dBLeftMax, rightMax: $dBRightMax")
+                leftdb = "left dB: " + dBLeftMax
+                progressLeft = dBToProgress(dBLeftMax.toDouble())
+                //                chartEntryModelLeft = entryModelOf(measuredVals[0].toFloat(), 12f, 12f, 16f)
+
+                rightdb = "right dB: " + dBRightMax
+                progressRight = dBToProgress(dBRightMax.toDouble())
+
             }
         })
+    }
+
+    private inner class RecorderRunnable : Runnable {
+        override fun run() {
+            while (true) {
+                val buf = ShortArray(Meter.BUFFER_SIZE)
+                val measuredVals = Meter.readLeftRightMeter(MainActivity.meter!!)
+                Values.lastSecDbVecUpdate(measuredVals)
+            }
+        }
     }
 }
 
