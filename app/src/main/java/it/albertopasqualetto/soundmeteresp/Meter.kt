@@ -79,7 +79,7 @@ object Meter {
     }
 
 
-    fun readLeftRightMeter(meter: AudioRecord) : List<DoubleArray> {
+    fun readLeftRightMeter(meter: AudioRecord) : List<FloatArray> {
         var buf : ShortArray = ShortArray(BUFFER_SIZE)
         var readN = 0
 
@@ -90,25 +90,14 @@ object Meter {
             Log.d(TAG, e.toString())
         }
 
-        val left = buf.filter { it % 2 == 0 }.map { PCMtoDB(it) }.toDoubleArray()
-        val right = buf.filter { it % 2 == 1 }.map { PCMtoDB(it) }.toDoubleArray()
+        val left = buf.filter { it % 2 == 0 }.map { PCMtoDB(it) }.toFloatArray()
+        val right = buf.filter { it % 2 == 1 }.map { PCMtoDB(it) }.toFloatArray()
 
         return listOf(left, right)
     }
 
-    fun PCMtoDB(pcm: Number) : Double {
-//    return 20 * log10(abs(pcm.toDouble()) / 32768 /51805.5336 / 20e-6)   // TODO scale? +26?
-        return 20 * log10((abs(pcm.toDouble()) /32768) / 20e-6)   // TODO scale? +26?   //TODO HOW TO GET THE CORRECT VALUE??????????
+    fun PCMtoDB(pcm: Number) : Float {
+        return 20 * log10( (abs(pcm.toFloat()) /32768) / 20e-6f)   // TODO scale? +26?   //TODO HOW TO GET THE CORRECT VALUE??????????
     }
-    /*fun PCMtoDB(samples: ShortArray) : Double {
-        var sum = 0.0
-        for (sample in samples){
-            sum += (abs(sample.toDouble()) / 32768).pow(2)
-        }
-        Log.d("PCMtoDB", "sum: $sum")
-        val rms = sqrt(sum / samples.size)
-        if (rms < 1) Log.d("PCMtoDB", "rms: $rms")
-        return 20 * log10(rms)
-    }*/
 
 }

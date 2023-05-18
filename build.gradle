@@ -1,8 +1,7 @@
 buildscript {
     ext {
-        compose_version = '1.4.2'
-        material3_version = '1.0.1'
-        vico_version = '1.6.5'
+        compose_version = '1.4.3'
+//        vico_version = '1.6.6'
     }
 }// Top-level build file where you can add configuration options common to all sub-projects/modules.
 plugins {
