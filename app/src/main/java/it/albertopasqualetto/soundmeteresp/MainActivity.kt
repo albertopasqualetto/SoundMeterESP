@@ -4,43 +4,47 @@ package it.albertopasqualetto.soundmeteresp
 
 // import MPAndroidChart
 
-import android.graphics.Color
+// TODO enable rotation
+
 import android.media.AudioRecord
 import android.os.Bundle
 import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.*
+import androidx.compose.material3.CenterAlignedTopAppBar
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ProgressIndicatorDefaults
 import androidx.compose.material3.Surface
+import androidx.compose.material3.Tab
+import androidx.compose.material3.TabRow
 import androidx.compose.material3.Text
+import androidx.compose.material3.Icon
+import androidx.compose.material3.TabRowDefaults
+import androidx.compose.material3.TabPosition
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.viewinterop.AndroidView
-import com.github.mikephil.charting.charts.LineChart
-import com.github.mikephil.charting.components.XAxis
-import com.github.mikephil.charting.data.Entry
-import com.github.mikephil.charting.data.LineData
-import com.github.mikephil.charting.data.LineDataSet
 import it.albertopasqualetto.soundmeteresp.ui.theme.SoundMeterESPTheme
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
-enum class Type {
-    ONE_SEC_LEFT, ONE_SEC_RIGHT,
-    FIVE_MIN_LEFT, FIVE_MIN_RIGHT
-}
 
 class MainActivity : ComponentActivity() {
     companion object {
-        private val TAG = MainActivity::class.simpleName
+        val TAG = MainActivity::class.simpleName
 
         const val DELAY_MS : Long = 1000
         var meter : AudioRecord? = null
@@ -127,9 +131,59 @@ class MainActivity : ComponentActivity() {
         meter = null
     }
 
+    @OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
     @Preview(showBackground = true)
     @Composable
-    fun AppContent(){
+    fun AppContent() {
+        val tabs = listOf("Last second", "5 minutes History")
+        val pagerState = rememberPagerState(initialPage = 0)
+        val coroutineScope = rememberCoroutineScope()
+
+        Column(modifier = Modifier.fillMaxWidth()) {
+            CenterAlignedTopAppBar(title = { Text("Sound Meter", maxLines = 1, overflow = TextOverflow.Ellipsis) })
+
+            TabRow(selectedTabIndex = pagerState.currentPage) {
+                tabs.forEachIndexed { index, title ->
+                    Tab(text = { Text(title) },
+                        selected = pagerState.currentPage == index,
+                        onClick = {
+                            coroutineScope.launch {
+                                pagerState.animateScrollToPage(index)
+                            }
+                        },
+                        icon = {when (index) {
+                            0 -> Icon(Icons.Default.Hearing, contentDescription = "Last second")
+                            1 ->Icon(Icons.Default.History, contentDescription = "Last 5 minutes")
+                            else -> Icon(Icons.Default.Star, contentDescription = "")
+                        }}
+                    )
+                }
+            }
+            HorizontalPager(
+                pageCount = tabs.size,
+                state = pagerState,
+                beyondBoundsPageCount = 2
+            ) { tabIndex ->
+                when (tabIndex) {
+                    0 -> OneSecView()
+                    1 -> FiveMinView()
+                }
+            }
+        }
+
+
+        // auto-measure
+        LaunchedEffect(key1 = Unit, block = {
+//            delay(DELAY_MS)
+            recorderThread = Thread(RecorderRunnable(), "RecorderRunnable")
+            recorderThread!!.start()
+
+        })
+    }
+
+
+    @Composable
+    fun OneSecView() {
         var leftdb by remember { mutableStateOf("Waiting left dB...") }
         var rightdb by remember { mutableStateOf("Waiting right dB...") }
 
@@ -144,128 +198,114 @@ class MainActivity : ComponentActivity() {
             animationSpec = ProgressIndicatorDefaults.ProgressAnimationSpec
         )
 
-        var onUpdateLeft by remember { mutableStateOf(0) }
+        var onUpdateOneLeft by remember { mutableStateOf(0) }
+        var onUpdateOneRight by remember { mutableStateOf(0) }
 
-        Column(modifier = Modifier.fillMaxSize(), horizontalAlignment = Alignment.CenterHorizontally){
-            Row(modifier=Modifier.fillMaxSize(), verticalAlignment = Alignment.CenterVertically) {
-                Column(modifier=Modifier.fillMaxHeight(), verticalArrangement = Arrangement.SpaceEvenly, horizontalAlignment = Alignment.CenterHorizontally) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(20.dp), verticalArrangement = Arrangement.SpaceEvenly
+        ) {  // outline
+
+            Row(modifier = Modifier.weight(1f)) { // left
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {  // arrangement in column
                     LinearProgressIndicator(
                         modifier = Modifier
                             .semantics(mergeDescendants = true) {}
                             .padding(10.dp)
-                            .rotate(-90f)
                             .requiredHeight(PROGRESS_BAR_HEIGHT)
                             .requiredWidth(PROGRESS_BAR_WIDTH),
                         progress = animatedProgressLeft,
                     )
                     Text(text = leftdb)
 
-                    Chart(type = Type.ONE_SEC_LEFT, updated = onUpdateLeft, modifier = Modifier.fillMaxHeight())
-
+                    Charts.ONE_SEC_LEFT(updated = onUpdateOneLeft, modifier = Modifier.fillMaxSize()) // TODO why becomes a scatter chart?
                 }
-                Column(modifier=Modifier.fillMaxHeight(), verticalArrangement = Arrangement.SpaceEvenly, horizontalAlignment = Alignment.CenterHorizontally) {
+            }
+            Row(modifier = Modifier.weight(1f)) { // right
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {  //arrangement in column
                     LinearProgressIndicator(
                         modifier = Modifier
                             .semantics(mergeDescendants = true) {}
                             .padding(10.dp)
-                            .rotate(-90f)
                             .requiredHeight(PROGRESS_BAR_HEIGHT)
                             .requiredWidth(PROGRESS_BAR_WIDTH),
                         progress = animatedProgressRight,
                     )
                     Text(text = rightdb)
 
-                    Chart(type = Type.ONE_SEC_RIGHT, updated = onUpdateLeft, modifier = Modifier.fillMaxHeight())
+                    Charts.ONE_SEC_RIGHT(updated = onUpdateOneRight, modifier = Modifier.fillMaxSize())
                 }
             }
-
-
-
         }
 
-        // auto-measure
         LaunchedEffect(key1 = Unit, block = {
-            delay(DELAY_MS)
-            recorderThread = Thread(RecorderRunnable(), "RecorderRunnable")
-            recorderThread!!.start()
             while (true){
                 val (dBLeftMax, dBRightMax) = Values.getMaxDbLastSec()
                 Log.d(TAG, "leftMax: $dBLeftMax, rightMax: $dBRightMax")
-                leftdb = "left dB: " + dBLeftMax
+                leftdb = "left dB: $dBLeftMax"
                 progressLeft = dBToProgress(dBLeftMax.toFloat())
-                onUpdateLeft = (0..1_000_000).random()
+                onUpdateOneLeft = (0..1_000_000).random()
 
-                rightdb = "right dB: " + dBRightMax
+                rightdb = "right dB: $dBRightMax"
                 progressRight = dBToProgress(dBRightMax.toFloat())
+                onUpdateOneRight = (0..1_000_000).random()
 
 
                 delay(DELAY_MS)
             }
-        })
+        } )
     }
 
-    // chart with MPAndroidChart
+
     @Composable
-    fun Chart(type : Type, updated : Int, modifier: Modifier = Modifier){
-        lateinit var chart: LineChart
-        updated  // to trigger recomposition
-
-        AndroidView(
-            modifier = modifier,
-            factory = { context ->
-                LineChart(context).apply {
-                    chart = this
-                    chart.setTouchEnabled(false)
-                    chart.setDrawGridBackground(true)
-                    chart.setDrawBorders(false)
-                    chart.setBackgroundColor(Color.WHITE)
-                    chart.setGridBackgroundColor(Color.WHITE)
-                    chart.description.isEnabled = false
-                    chart.legend.isEnabled = false
-                    chart.axisRight.isEnabled = false
-                    chart.xAxis.position = XAxis.XAxisPosition.BOTTOM
-                    chart.isFocusable = false
-                    chart.isClickable = false
-                    chart.isLongClickable = false
-                    chart.isDoubleTapToZoomEnabled = false
-                    chart.isAutoScaleMinMaxEnabled = true
-                    chart.setViewPortOffsets(0f, 0f, 0f, 0f)
+    fun FiveMinView(){
+        var onUpdateFiveLeft by remember { mutableStateOf(0) }
+        var onUpdateFiveRight by remember { mutableStateOf(0) }
 
 
-                    val dataSet = LineDataSet(mutableListOf<Entry>(), "Label"); // add entries to dataset
-                    /*dataSet.setColor(...);
-                    dataSet.setValueTextColor(...); // styling, ...*/
+        Column(modifier = Modifier
+            .fillMaxSize()
+            .padding(20.dp), verticalArrangement = Arrangement.SpaceEvenly) {  // outline
 
-                    val lineData = LineData(dataSet)
-                    chart.data = lineData
-                    chart.invalidate() // refresh
+            Row(modifier = Modifier.weight(1f).padding(2.dp)) { // left
+                Column(modifier = Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {  // arrangement in column
+                    Text(text = "Left dB of last 5 minutes")
+                    Charts.FIVE_MIN_LEFT(updated = onUpdateFiveLeft, modifier = Modifier.fillMaxSize().padding(2.dp)) // TODO why becomes a scatter chart?
                 }
-            },
-
-            update = { chart ->
-                updated  // to trigger recomposition
-                // update chart here
-//                chart.clear()
-                val data: LineData = chart.data
-                val set = data.getDataSetByIndex(0)
-                when (type) {
-                    Type.ONE_SEC_LEFT -> data.addEntry(Entry(set.entryCount.toFloat(), Values.getFirstFromLastSecLeft()?: 0f), 0)
-                    Type.ONE_SEC_RIGHT -> data.addEntry(Entry(set.entryCount.toFloat(), Values.getFirstFromLastSecRight()?: 0f), 0)
-                    Type.FIVE_MIN_LEFT -> TODO()
-                    Type.FIVE_MIN_RIGHT -> TODO()
-                }
-//                chart.data = LineData(LineDataSet(data, "Label"))
-//                chart.data.notifyDataChanged()
-                chart.notifyDataSetChanged()    // let the chart know it's data changed
-                chart.invalidate()
-                Log.d(TAG, "Chart: updated")
             }
-        )
+            Row(modifier = Modifier.weight(1f).padding(2.dp)) { // right
+                Column(modifier = Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {  //arrangement in column
+                    Text(text = "Right dB of last 5 minutes")
+                    Charts.FIVE_MIN_RIGHT(updated = onUpdateFiveRight, modifier = Modifier.fillMaxSize().padding(2.dp))
+                }
+            }
 
-        SideEffect {
-            Log.d(TAG, "Chart: recomposing")
+
         }
+
+
+        LaunchedEffect(key1 = Unit, block = {
+            while (true){
+                Log.d(TAG, "Launched effect: FiveMinView")
+                onUpdateFiveLeft = (0..1_000_000).random()
+
+                onUpdateFiveRight = (0..1_000_000).random()
+
+
+                delay(1000)
+            }
+        })
+
     }
+
+
 
 
     private inner class RecorderRunnable : Runnable {

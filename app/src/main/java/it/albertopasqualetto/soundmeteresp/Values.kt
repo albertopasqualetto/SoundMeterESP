@@ -1,6 +1,7 @@
 @file:JvmName("Values")
 package it.albertopasqualetto.soundmeteresp
 
+import android.util.Log
 import java.util.concurrent.ConcurrentLinkedQueue
 
 
@@ -9,8 +10,8 @@ object Values {
     private var rightQueue : ConcurrentLinkedQueue<Float> = ConcurrentLinkedQueue<Float>()
     private var lastSecDbLeftList : MutableList<Float> = mutableListOf<Float>()  // max size = 1 sec = Meter.SAMPLE_RATE
     private var lastSecDbRightList : MutableList<Float> = mutableListOf<Float>()  // max size = 1 sec = Meter.SAMPLE_RATE
-    private var last5MinDbLeftQueue : ConcurrentLinkedQueue<Float> = ConcurrentLinkedQueue<Float>()  // max size = 5 min = 1*60*5
-    private var last5MinDbRightQueue : ConcurrentLinkedQueue<Float> = ConcurrentLinkedQueue<Float>()  // max size = 5 min = 1*60*5
+    var last5MinDbLeftList : MutableList<Float> = mutableListOf<Float>()  // max size = 5 min = 1*60*5
+    var last5MinDbRightList: MutableList<Float> = mutableListOf<Float>()  // max size = 5 min = 1*60*5
     private var leftCount = 0
     private var rightCount = 0
 
@@ -24,19 +25,23 @@ object Values {
 //        while (lastSecDbRightQueue.size >= Meter.SAMPLE_RATE) { lastSecDbRightQueue.poll() }
     }
     
-    fun updateLast5MinDbLeft() {
-        while (last5MinDbLeftQueue.size >= 1*60*5) { last5MinDbLeftQueue.poll() }
-        last5MinDbLeftQueue.offer(lastSecDbLeftList.average().toFloat())
+    private fun updateLast5MinDbLeft(newMaxLeft: Float) {
+        while (last5MinDbLeftList.size >= 1*60*5) { last5MinDbLeftList.removeFirst() }
+        last5MinDbLeftList.add(newMaxLeft)
     }
 
-    fun updateLast5MinDbRight() {
-        while (last5MinDbRightQueue.size >= 1*60*5) { last5MinDbRightQueue.poll() }
-        last5MinDbRightQueue.offer(lastSecDbRightList.average().toFloat())
+    private fun updateLast5MinDbRight(newMaxRight: Float) {
+        while (last5MinDbRightList.size >= 1*60*5) { last5MinDbRightList.removeFirst() }
+        last5MinDbRightList.add(newMaxRight)
     }
 
     fun getMaxDbLastSec() : FloatArray {
-        val maxLeft = lastSecDbLeftList.maxOrNull() ?: 0f
-        val maxRight = lastSecDbRightList.maxOrNull() ?: 0f
+        // TODO only changes if there is an higher value
+        val maxLeft = lastSecDbLeftList.maxOrNull() ?: if (lastSecDbLeftList.size == 1) lastSecDbLeftList.first() else 0f
+        updateLast5MinDbLeft(maxLeft)
+        val maxRight = lastSecDbRightList.maxOrNull() ?: if (lastSecDbRightList.size == 1) lastSecDbRightList.first() else 0f
+        updateLast5MinDbLeft(maxRight)
+        Log.d(MainActivity.TAG, "Values: getMaxDbLastSec: $maxLeft, $maxRight, sizes: ${lastSecDbLeftList.size}, ${lastSecDbRightList.size}")
         return floatArrayOf(maxLeft, maxRight)
     }
 
@@ -44,12 +49,7 @@ object Values {
         val out = leftQueue.poll()
         if ( out != null ) {
             leftCount++
-        }
-
-        if (leftCount >= Meter.SAMPLE_RATE) {   // 1 sec
-            leftCount = 0
-            updateLast5MinDbLeft()
-            lastSecDbLeftList.clear()
+            lastSecDbLeftList.add(out)
         }
         return out
     }
@@ -58,12 +58,7 @@ object Values {
         val out = rightQueue.poll()
         if ( out != null ) {
             rightCount++
-        }
-
-        if (leftCount >= Meter.SAMPLE_RATE) {   // 1 sec
-            leftCount = 0
-            updateLast5MinDbRight()
-            lastSecDbRightList.clear()
+            lastSecDbRightList.add(out)
         }
         return out
     }
