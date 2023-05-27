@@ -2,24 +2,39 @@ package it.albertopasqualetto.soundmeteresp
 
 // min = 0 dB, max = 200 dB
 
-// import MPAndroidChart
 
-// TODO enable rotation
+// TODO draw rotated screen
 
+import android.content.Intent
+import android.content.pm.PackageManager
 import android.media.AudioRecord
 import android.os.Bundle
 import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.ExperimentalFoundationApi
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.requiredHeight
+import androidx.compose.foundation.layout.requiredWidth
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.filled.Hearing
+import androidx.compose.material.icons.filled.History
+import androidx.compose.material.icons.filled.Pause
+import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ProgressIndicatorDefaults
@@ -27,27 +42,31 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Tab
 import androidx.compose.material3.TabRow
 import androidx.compose.material3.Text
-import androidx.compose.material3.Icon
-import androidx.compose.material3.TabRowDefaults
-import androidx.compose.material3.TabPosition
-import androidx.compose.runtime.*
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.core.app.ActivityCompat
 import it.albertopasqualetto.soundmeteresp.ui.theme.SoundMeterESPTheme
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import android.Manifest
+import androidx.activity.OnBackPressedCallback
 
 
 class MainActivity : ComponentActivity() {
     companion object {
         val TAG = MainActivity::class.simpleName
-
-        const val DELAY_MS : Long = 1000
-        var meter : AudioRecord? = null
 
         private val PROGRESS_BAR_HEIGHT = 50.dp
         private val PROGRESS_BAR_WIDTH = 200.dp
@@ -57,13 +76,22 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    private var recorderThread : Thread? = null
-
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-       /* val requestPermissionLauncher = registerForActivityResult(ActivityResultContracts.RequestPermission())
+        Log.d(TAG, "onCreate!")
+
+        // Register a callback that calls the finish() method when the back button is pressed.
+        this.onBackPressedDispatcher.addCallback(object : OnBackPressedCallback(true) {
+            override fun handleOnBackPressed() {
+                val i = Intent(applicationContext, MeterService::class.java)
+                stopService(i)
+                finish()
+            }
+        })
+
+        val requestPermissionLauncher = registerForActivityResult(ActivityResultContracts.RequestPermission())
         { isGranted: Boolean ->
             if (isGranted) {
                 // Permission is granted. Continue the action or workflow in your
@@ -92,14 +120,13 @@ class MainActivity : ComponentActivity() {
             // for ActivityCompat#requestPermissions for more details.
             requestPermissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
 //                        return
-        }*/
-
-
-        try {
-            meter = Meter.initMeter(this)
-        } catch (e: Exception) {    // TODO handle no permission
-            e.printStackTrace()
         }
+
+        val i = Intent(applicationContext, MeterService::class.java)
+        i.putExtra(MeterService.REC_START, true)
+        startForegroundService(i)
+
+
         setContent {
             SoundMeterESPTheme {
                 // A surface container using the 'background' color from the theme
@@ -115,20 +142,27 @@ class MainActivity : ComponentActivity() {
 
     override fun onPause() {
         super.onPause()
-        recorderThread = null
-        if (meter?.state == AudioRecord.STATE_INITIALIZED && meter?.recordingState == AudioRecord.RECORDSTATE_RECORDING) meter?.stop() ?: Log.d(TAG, "onPause: meter is not recording")
+        /*recorderThread = null
+        if (meter?.state == AudioRecord.STATE_INITIALIZED && meter?.recordingState == AudioRecord.RECORDSTATE_RECORDING) meter?.stop() ?: Log.d(TAG, "onPause: meter is not recording")*/
     }
 
     override fun onResume() {
         super.onResume()
-        if (meter?.state == AudioRecord.STATE_INITIALIZED && meter?.recordingState == AudioRecord.RECORDSTATE_STOPPED) meter?.startRecording() ?: Log.d(TAG, "onResume: meter is not stopped")
+        // TODO redraw chart
+        /*Charts.ONE_SEC_LEFT.redraw()
+        Charts.ONE_SEC_RIGHT.redraw()
+        Charts.FIVE_MIN_LEFT.redraw()
+        Charts.FIVE_MIN_RIGHT.redraw()*/
+        /*onUpdateChartFiveLeft = (0..1_000_000).random()
+        onUpdateChartFiveRight = (0..1_000_000).random()*/
+//        if (meter?.state == AudioRecord.STATE_INITIALIZED && meter?.recordingState == AudioRecord.RECORDSTATE_STOPPED) meter?.startRecording() ?: Log.d(TAG, "onResume: meter is not stopped")
     }
 
     override fun onDestroy() {
         super.onDestroy()
-        if (meter?.state == AudioRecord.STATE_INITIALIZED && meter?.recordingState == AudioRecord.RECORDSTATE_STOPPED) meter?.startRecording() ?: Log.d(TAG, "onDestroy: meter is not stopped")
+        /*if (meter?.state == AudioRecord.STATE_INITIALIZED && meter?.recordingState == AudioRecord.RECORDSTATE_STOPPED) meter?.stop() ?: Log.d(TAG, "onDestroy: meter is not stopped")
         if (meter?.state == AudioRecord.STATE_INITIALIZED) meter?.release() ?: Log.d(TAG, "onDestroy: meter is not initialized")
-        meter = null
+        meter = null*/
     }
 
     @OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
@@ -138,9 +172,29 @@ class MainActivity : ComponentActivity() {
         val tabs = listOf("Last second", "5 minutes History")
         val pagerState = rememberPagerState(initialPage = 0)
         val coroutineScope = rememberCoroutineScope()
+        var playOrPauseState by remember { mutableStateOf(0) }
 
         Column(modifier = Modifier.fillMaxWidth()) {
-            CenterAlignedTopAppBar(title = { Text("Sound Meter", maxLines = 1, overflow = TextOverflow.Ellipsis) })
+            CenterAlignedTopAppBar(title = { Text("Sound Meter", maxLines = 1, overflow = TextOverflow.Ellipsis) },
+                                    actions = { IconButton(onClick = {
+                                        if (playOrPauseState == 0){ // playing
+                                            val i = Intent(applicationContext, MeterService::class.java)
+                                            stopService(i)
+                                        } else { // paused
+                                            val i = Intent(applicationContext, MeterService::class.java)
+                                            i.putExtra(MeterService.REC_START, true)
+                                            startForegroundService(i)
+                                        }
+
+                                        playOrPauseState = if (playOrPauseState==0) 1 else 0
+                                    }) {
+                                        Icon(
+                                            imageVector = if (playOrPauseState==0) Icons.Filled.Pause else Icons.Filled.PlayArrow,
+                                            contentDescription = "Start recording"
+                                        )
+                                        }
+                                    }
+            )
 
             TabRow(selectedTabIndex = pagerState.currentPage) {
                 tabs.forEachIndexed { index, title ->
@@ -170,22 +224,13 @@ class MainActivity : ComponentActivity() {
                 }
             }
         }
-
-
-        // auto-measure
-        LaunchedEffect(key1 = Unit, block = {
-//            delay(DELAY_MS)
-            recorderThread = Thread(RecorderRunnable(), "RecorderRunnable")
-            recorderThread!!.start()
-
-        })
     }
 
 
     @Composable
     fun OneSecView() {
-        var leftdb by remember { mutableStateOf("Waiting left dB...") }
-        var rightdb by remember { mutableStateOf("Waiting right dB...") }
+        var leftdb by remember { mutableStateOf("Waiting left...") }
+        var rightdb by remember { mutableStateOf("Waiting right...") }
 
         var progressLeft by remember { mutableStateOf(0.0f) }
         val animatedProgressLeft by animateFloatAsState(
@@ -198,67 +243,79 @@ class MainActivity : ComponentActivity() {
             animationSpec = ProgressIndicatorDefaults.ProgressAnimationSpec
         )
 
-        var onUpdateOneLeft by remember { mutableStateOf(0) }
-        var onUpdateOneRight by remember { mutableStateOf(0) }
+        var onUpdateChartOneLeft by remember { mutableStateOf(0) }
+        var onUpdateChartOneRight by remember { mutableStateOf(0) }
 
         Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(20.dp), verticalArrangement = Arrangement.SpaceEvenly
+            modifier = Modifier.fillMaxSize().padding(20.dp), verticalArrangement = Arrangement.SpaceEvenly
         ) {  // outline
 
-            Row(modifier = Modifier.weight(1f)) { // left
+            Row(modifier = Modifier.weight(1f).padding(2.dp)) { // left
                 Column(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {  // arrangement in column
-                    LinearProgressIndicator(
-                        modifier = Modifier
-                            .semantics(mergeDescendants = true) {}
-                            .padding(10.dp)
-                            .requiredHeight(PROGRESS_BAR_HEIGHT)
-                            .requiredWidth(PROGRESS_BAR_WIDTH),
-                        progress = animatedProgressLeft,
-                    )
-                    Text(text = leftdb)
+                    Text(text = "Left channel", fontWeight = FontWeight.Bold)
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceAround, modifier = Modifier.fillMaxWidth()) {
+                        Text(text = "$leftdb dB")
+                        LinearProgressIndicator(
+                            modifier = Modifier
+                                .semantics(mergeDescendants = true) {}
+                                .padding(10.dp)
+                                .requiredHeight(PROGRESS_BAR_HEIGHT)
+                                .requiredWidth(PROGRESS_BAR_WIDTH),
+                            progress = animatedProgressLeft,
+                        )
+                    }
 
-                    Charts.ONE_SEC_LEFT(updated = onUpdateOneLeft, modifier = Modifier.fillMaxSize()) // TODO why becomes a scatter chart?
+                    Charts.ONE_SEC_LEFT(updateTrigger = onUpdateChartOneLeft, modifier = Modifier.fillMaxSize()) // TODO why becomes a scatter chart?
                 }
             }
-            Row(modifier = Modifier.weight(1f)) { // right
+            Row(modifier = Modifier.weight(1f).padding(2.dp)) { // right
                 Column(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {  //arrangement in column
-                    LinearProgressIndicator(
-                        modifier = Modifier
-                            .semantics(mergeDescendants = true) {}
-                            .padding(10.dp)
-                            .requiredHeight(PROGRESS_BAR_HEIGHT)
-                            .requiredWidth(PROGRESS_BAR_WIDTH),
-                        progress = animatedProgressRight,
-                    )
-                    Text(text = rightdb)
+                    Text(text = "Right channel", fontWeight = FontWeight.Bold)
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceAround, modifier = Modifier.fillMaxWidth()) {
+                        Text(text = "$rightdb dB")
+                        LinearProgressIndicator(
+                            modifier = Modifier
+                                .semantics(mergeDescendants = true) {}
+                                .padding(10.dp)
+                                .requiredHeight(PROGRESS_BAR_HEIGHT)
+                                .requiredWidth(PROGRESS_BAR_WIDTH),
+                            progress = animatedProgressRight,
+                        )
+                    }
 
-                    Charts.ONE_SEC_RIGHT(updated = onUpdateOneRight, modifier = Modifier.fillMaxSize())
+                    Charts.ONE_SEC_RIGHT(updateTrigger = onUpdateChartOneRight, modifier = Modifier.fillMaxSize())
                 }
             }
         }
 
+
         LaunchedEffect(key1 = Unit, block = {
+            var countToSec = 0  // count to 16,6 = 1 sec
             while (true){
-                val (dBLeftMax, dBRightMax) = Values.getMaxDbLastSec()
-                Log.d(TAG, "leftMax: $dBLeftMax, rightMax: $dBRightMax")
-                leftdb = "left dB: $dBLeftMax"
-                progressLeft = dBToProgress(dBLeftMax.toFloat())
-                onUpdateOneLeft = (0..1_000_000).random()
+                if(MeterService.isRecording) {
+                    countToSec++
+                    if (countToSec > 16) {
+                        countToSec = 0
+                        val (dBLeftMax, dBRightMax) = Values.getMaxDbLastSec()
+                        Log.d(TAG, "leftMax: $dBLeftMax, rightMax: $dBRightMax")
+                        leftdb = dBLeftMax.toString()
+                        progressLeft = dBToProgress(dBLeftMax.toFloat())
+                        rightdb = dBRightMax.toString()
+                        progressRight = dBToProgress(dBRightMax.toFloat())
+                    }
 
-                rightdb = "right dB: $dBRightMax"
-                progressRight = dBToProgress(dBRightMax.toFloat())
-                onUpdateOneRight = (0..1_000_000).random()
+                    onUpdateChartOneLeft = (0..1_000_000).random()
+                    onUpdateChartOneRight = (0..1_000_000).random()
+                }
 
-
-                delay(DELAY_MS)
+                delay(1000/60)  // 60 Hz (refresh rate of the screen)
+                // TODO verify if second is used correctly
             }
         } )
     }
@@ -266,8 +323,8 @@ class MainActivity : ComponentActivity() {
 
     @Composable
     fun FiveMinView(){
-        var onUpdateFiveLeft by remember { mutableStateOf(0) }
-        var onUpdateFiveRight by remember { mutableStateOf(0) }
+        var onUpdateChartFiveLeft by remember { mutableStateOf(0) }
+        var onUpdateChartFiveRight by remember { mutableStateOf(0) }
 
 
         Column(modifier = Modifier
@@ -276,14 +333,20 @@ class MainActivity : ComponentActivity() {
 
             Row(modifier = Modifier.weight(1f).padding(2.dp)) { // left
                 Column(modifier = Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {  // arrangement in column
-                    Text(text = "Left dB of last 5 minutes")
-                    Charts.FIVE_MIN_LEFT(updated = onUpdateFiveLeft, modifier = Modifier.fillMaxSize().padding(2.dp)) // TODO why becomes a scatter chart?
+                    Text(text = "Left channel", fontWeight = FontWeight.Bold)
+                    Charts.FIVE_MIN_LEFT(updateTrigger = onUpdateChartFiveLeft, modifier = Modifier
+                        .fillMaxSize()
+                        .padding(2.dp)) // TODO why becomes a scatter chart?
                 }
             }
-            Row(modifier = Modifier.weight(1f).padding(2.dp)) { // right
+            Row(modifier = Modifier
+                .weight(1f)
+                .padding(2.dp)) { // right
                 Column(modifier = Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {  //arrangement in column
-                    Text(text = "Right dB of last 5 minutes")
-                    Charts.FIVE_MIN_RIGHT(updated = onUpdateFiveRight, modifier = Modifier.fillMaxSize().padding(2.dp))
+                    Text(text = "Right channel", fontWeight = FontWeight.Bold)
+                    Charts.FIVE_MIN_RIGHT(updateTrigger = onUpdateChartFiveRight, modifier = Modifier
+                        .fillMaxSize()
+                        .padding(2.dp))
                 }
             }
 
@@ -293,28 +356,18 @@ class MainActivity : ComponentActivity() {
 
         LaunchedEffect(key1 = Unit, block = {
             while (true){
-                Log.d(TAG, "Launched effect: FiveMinView")
-                onUpdateFiveLeft = (0..1_000_000).random()
+                if(MeterService.isRecording){
+                    Log.d(TAG, "Launched effect: FiveMinView")
 
-                onUpdateFiveRight = (0..1_000_000).random()
+                    onUpdateChartFiveLeft = (0..1_000_000).random()
+                    onUpdateChartFiveRight = (0..1_000_000).random()
+                }
 
 
                 delay(1000)
             }
         })
 
-    }
-
-
-
-
-    private inner class RecorderRunnable : Runnable {
-        override fun run() {
-            while (true) {
-                val measuredVals = Meter.readLeftRightMeter(MainActivity.meter!!)
-                Values.updateLastSecDbVec(measuredVals)
-            }
-        }
     }
 }
 

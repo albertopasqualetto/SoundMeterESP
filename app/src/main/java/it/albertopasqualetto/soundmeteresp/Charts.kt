@@ -12,17 +12,22 @@ import com.github.mikephil.charting.data.Entry
 import com.github.mikephil.charting.data.LineData
 import com.github.mikephil.charting.data.LineDataSet
 
+@Suppress("UNUSED_EXPRESSION")
 enum class Charts {
     ONE_SEC_LEFT, ONE_SEC_RIGHT,
     FIVE_MIN_LEFT, FIVE_MIN_RIGHT;
 
+    lateinit var chart: LineChart
+
 
     @Composable
-    public operator fun invoke(updated : Int, modifier: Modifier = Modifier){
-        lateinit var chart: LineChart
-        updated  // to trigger recomposition
-
+    operator fun invoke(updateTrigger : Int, modifier: Modifier = Modifier){
         val type = this
+
+        val maxEntries = when(type) {
+            ONE_SEC_LEFT, ONE_SEC_RIGHT -> 100
+            FIVE_MIN_LEFT, FIVE_MIN_RIGHT -> 60*5
+        }
 
         AndroidView(
             modifier = modifier,
@@ -43,14 +48,15 @@ enum class Charts {
                     chart.isClickable = false
                     chart.isLongClickable = false
                     chart.isDoubleTapToZoomEnabled = false
-                    chart.isAutoScaleMinMaxEnabled = true
+//                    chart.isAutoScaleMinMaxEnabled = true
 //                    chart.setViewPortOffsets(0f, 0f, 0f, 0f)
                     chart.axisLeft.axisMinimum = 0f
                     chart.axisLeft.axisMaximum = 100f   //200f
+                    chart.xAxis.axisMinimum = 0f
+                    chart.xAxis.axisMaximum = maxEntries.toFloat()
 
-                    chart.isLogEnabled = false
 
-                    val dataSet = LineDataSet(mutableListOf<Entry>(), "Label"); // add entries to dataset
+                    val dataSet = LineDataSet(mutableListOf<Entry>(), "Label") // add entries to dataset
                     /*dataSet.setColor(...);
                     dataSet.setValueTextColor(...); // styling, ...*/
 
@@ -59,9 +65,8 @@ enum class Charts {
                     chart.invalidate() // refresh
                 }
             },
-
             update = { chart ->
-                updated  // to trigger recomposition
+                updateTrigger  // to trigger recomposition
                 // update chart here
 //                chart.clear()
                 val data: LineData = chart.data
@@ -69,11 +74,12 @@ enum class Charts {
                 var newEntry : Entry? = null
                 try{
                     newEntry = when (type) {
-                        ONE_SEC_LEFT -> Entry(set.entryCount.toFloat(), Values.getFirstFromLastSecLeft()!!)
-                        ONE_SEC_RIGHT -> Entry(set.entryCount.toFloat(), Values.getFirstFromLastSecRight()!!)
+                        ONE_SEC_LEFT -> Entry(set.entryCount.toFloat(), Values.getFirstFromQueueLeft()!!)
+                        ONE_SEC_RIGHT -> Entry(set.entryCount.toFloat(), Values.getFirstFromQueueRight()!!)
                         FIVE_MIN_LEFT -> Entry(set.entryCount.toFloat(), Values.last5MinDbLeftList[set.entryCount])
                         FIVE_MIN_RIGHT -> Entry(set.entryCount.toFloat(), Values.last5MinDbRightList[set.entryCount])
                     }
+                    Log.d(MainActivity.TAG, "Chart: newEntry: $newEntry, $type")
                 } catch (e : Exception){
                     Log.d(MainActivity.TAG, "Chart: exception: $e, $type")
                     return@AndroidView
@@ -81,13 +87,11 @@ enum class Charts {
 
                 data.addEntry(newEntry, 0)
 
-                if (set.entryCount > when(type){
-                        ONE_SEC_LEFT -> 100
-                        ONE_SEC_RIGHT -> 100
-                        FIVE_MIN_LEFT -> 60*5
-                        FIVE_MIN_RIGHT -> 60*5
-                    }) {
-                    set.removeFirst()
+                if (set.entryCount > maxEntries){
+                    set.removeEntry(0)
+                    for (i in 1 until set.entryCount){
+                        set.getEntryForIndex(i).x = i - 1f
+                    }
                 }
 //                chart.data = LineData(LineDataSet(data, "Label"))
 //                chart.data.notifyDataChanged()
@@ -100,6 +104,13 @@ enum class Charts {
         SideEffect {
             Log.d(TAG, "Chart: recomposing")
         }
+    }
+
+    fun redraw(){
+        if (!this::chart.isInitialized)
+            return
+
+
     }
 
     companion object {
