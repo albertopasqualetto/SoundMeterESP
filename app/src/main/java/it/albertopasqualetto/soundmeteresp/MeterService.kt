@@ -11,20 +11,16 @@ import android.content.Intent
 import android.media.AudioFormat
 import android.media.AudioRecord
 import android.media.MediaRecorder
-import android.os.Handler
-import android.os.HandlerThread
 import android.os.IBinder
-import android.os.Looper
 import android.os.PowerManager
 import android.util.Log
-import android.widget.Toast
-import kotlin.concurrent.thread
 
 
 class MeterService : Service() {
-    var wakeLock: PowerManager.WakeLock? = null
+    private var wakeLock: PowerManager.WakeLock? = null
 
-    lateinit private var t: AudioRecordThread
+    private lateinit var recordThread: AudioRecordThread
+    private lateinit var readThread: AudioReadThread
 
     @SuppressLint("MissingPermission")
     override fun onCreate() {
@@ -47,23 +43,20 @@ class MeterService : Service() {
         return null // Clients can not bind to this service
     }
 
-    @SuppressLint("WakelockTimeout")
     override fun onStartCommand(intent: Intent, flags: Int, startId: Int): Int {
         if (isRecording) return START_NOT_STICKY
 
-        val goToMainActivityIntent = Intent(applicationContext, MainActivity::class.java).apply {
-//            this.flags = Intent.FLAG_ACTIVITY_REORDER_TO_FRONT
-            this.flags = Intent.FLAG_ACTIVITY_SINGLE_TOP
-        }
-        val pendingIntent: PendingIntent = PendingIntent.getActivity(applicationContext, 0, goToMainActivityIntent, PendingIntent.FLAG_IMMUTABLE)
-
-
-        // Build a notification with basic info
+        // Build a notification
         val notificationBuilder: Notification.Builder =
             Notification.Builder(applicationContext, CHANNEL_ID)
         notificationBuilder.setContentTitle("SoundMeterESP")
         notificationBuilder.setContentText("Recording sounds...")
         notificationBuilder.setSmallIcon(R.mipmap.ear_launcher_round)
+        val goToMainActivityIntent = Intent(applicationContext, MainActivity::class.java).apply {
+//            this.flags = Intent.FLAG_ACTIVITY_REORDER_TO_FRONT
+            this.flags = Intent.FLAG_ACTIVITY_SINGLE_TOP
+        }
+        val pendingIntent: PendingIntent = PendingIntent.getActivity(applicationContext, 0, goToMainActivityIntent, PendingIntent.FLAG_IMMUTABLE)
         notificationBuilder.setContentIntent(pendingIntent)
         val notification = notificationBuilder.build() // Requires API level 16
         // Runs this service in the foreground,
@@ -74,27 +67,33 @@ class MeterService : Service() {
 
         wakeLock = (getSystemService(Context.POWER_SERVICE) as PowerManager).run {
             newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "SoundMeterESP::$TAG").apply {
-                acquire()
+                acquire(10*60*1000L /*10 minutes*/)
             }
         }
 
 
 //        t = thread(start = true, isDaemon = true, name = "MeterServiceThread") { rec() }
-        t = AudioRecordThread()
-        t.start()
+        Log.d(TAG, "Start recording thread")
+        recordThread = AudioRecordThread()
+        recordThread.start()
+
+        Log.d(TAG, "Start reading thread")
+        readThread = AudioReadThread()
+        readThread.start()
 
         return START_NOT_STICKY
     }
 
     override fun onDestroy()
     {
-        t.stopRecording()
+        readThread.stopReading()
+        recordThread.stopRecording()
 
         if (meter?.state == AudioRecord.STATE_INITIALIZED)
             meter?.release() ?: Log.d(TAG, "meter was not initialized")
         meter = null
 
-        t.interrupt()
+        recordThread.interrupt()
 
         stopForeground(STOP_FOREGROUND_REMOVE)
 
@@ -114,6 +113,7 @@ class MeterService : Service() {
             isRecording = true
             meter?.startRecording()
 
+            sleep(1000)
             // Start recording loop
             while (isRecording)
                 if (meter?.recordingState == AudioRecord.RECORDSTATE_RECORDING) readLeftRightMeter(meter!!)
@@ -130,34 +130,38 @@ class MeterService : Service() {
         }
     }
 
-    private fun rec() {
-        // Build a notification with basic info
-        val notificationBuilder: Notification.Builder =
-            Notification.Builder(applicationContext, CHANNEL_ID)
-        notificationBuilder.setContentTitle("SoundMeterESP")
-        notificationBuilder.setContentText("Recording sounds...")
-        notificationBuilder.setSmallIcon(R.mipmap.ear_launcher_round)
-        val notification = notificationBuilder.build() // Requires API level 16
-        // Runs this service in the foreground,
-        // supplying the ongoing notification to be shown to the user
-        val notificationID = 2000162 // An ID for this notification unique within the app
-        startForeground(notificationID, notification)
-        Log.d(TAG, "rec: startForeground")
+    private inner class AudioReadThread : Thread("AudioReadThread") {
+        init {
+            isDaemon = true
+        }
+        var isReading = true
 
-        wakeLock = (getSystemService(Context.POWER_SERVICE) as PowerManager).run {
-            newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "SoundMeterESP::$TAG").apply {
-                acquire()
+        override fun run() {
+            super.run()
+            sleep(2000)
+
+            var countToSec = 0  // count to 16,6 = 1 sec
+            while(isReading){
+                countToSec++
+                if (countToSec >= 60) {
+                    countToSec = 0
+                    Values.getMaxDbLastSec()
+//                    Log.d(TAG, "Saved last second's data")
+                }
+
+                Values.getFirstFromQueueLeft()
+                Values.getFirstFromQueueRight()
+//                Log.d(TAG, "Saved real time data")
+                sleep(1000/60)
             }
         }
 
-        if (meter == null) Log.d(TAG, "rec: meter is null")
-        isRecording = true
-        meter?.startRecording()
-
-
-        while (isRecording)
-            if (meter?.recordingState == AudioRecord.RECORDSTATE_RECORDING) readLeftRightMeter(meter!!)
+        fun stopReading() {
+            // Set isReading to false to stop the reading loop
+            isReading = false
+        }
     }
+
 
     private fun readLeftRightMeter(meter: AudioRecord) {
         val buf : ShortArray = ShortArray(BUFFER_SIZE)
@@ -174,12 +178,6 @@ class MeterService : Service() {
         val right = buf.slice(1 until readN step 2).map { Values.PCMtoDB(it) }.toFloatArray()
         Log.d(TAG, "readLeftRightMeter: left: ${left.size} right: ${right.size}")
         Values.updateQueues(left, right, readN)
-    }
-
-
-    private fun stop()
-    {
-
     }
 
 

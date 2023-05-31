@@ -3,7 +3,6 @@ package it.albertopasqualetto.soundmeteresp
 import android.graphics.Color
 import android.util.Log
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.SideEffect
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.viewinterop.AndroidView
 import com.github.mikephil.charting.charts.LineChart
@@ -21,11 +20,11 @@ enum class Charts {
 
 
     @Composable
-    operator fun invoke(updateTrigger : Int, modifier: Modifier = Modifier){
+    operator fun invoke(updateTrigger : Float, modifier: Modifier = Modifier){
         val type = this
 
         val maxEntries = when(type) {
-            ONE_SEC_LEFT, ONE_SEC_RIGHT -> 100
+            ONE_SEC_LEFT, ONE_SEC_RIGHT -> 90
             FIVE_MIN_LEFT, FIVE_MIN_RIGHT -> 60*5
         }
 
@@ -54,11 +53,14 @@ enum class Charts {
                     chart.axisLeft.axisMaximum = 100f   //200f
                     chart.xAxis.axisMinimum = 0f
                     chart.xAxis.axisMaximum = maxEntries.toFloat()
+                    chart.setMaxVisibleValueCount(0)
 
 
                     val dataSet = LineDataSet(mutableListOf<Entry>(), "Label") // add entries to dataset
                     /*dataSet.setColor(...);
                     dataSet.setValueTextColor(...); // styling, ...*/
+                    dataSet.setDrawCircles(false)
+                    dataSet.lineWidth = 3f
 
                     val lineData = LineData(dataSet)
                     chart.data = lineData
@@ -72,10 +74,11 @@ enum class Charts {
                 val data: LineData = chart.data
                 val set = data.getDataSetByIndex(0)
                 var newEntry : Entry? = null
+                Log.d(TAG, "Chart: update $type, ${set.entryCount}, $updateTrigger")
                 try{
                     newEntry = when (type) {
-                        ONE_SEC_LEFT -> Entry(set.entryCount.toFloat(), Values.getFirstFromQueueLeft()!!)
-                        ONE_SEC_RIGHT -> Entry(set.entryCount.toFloat(), Values.getFirstFromQueueRight()!!)
+                        ONE_SEC_LEFT -> Entry(set.entryCount.toFloat(), updateTrigger)
+                        ONE_SEC_RIGHT -> Entry(set.entryCount.toFloat(), updateTrigger)
                         FIVE_MIN_LEFT -> Entry(set.entryCount.toFloat(), Values.last5MinDbLeftList[set.entryCount])
                         FIVE_MIN_RIGHT -> Entry(set.entryCount.toFloat(), Values.last5MinDbRightList[set.entryCount])
                     }
@@ -100,12 +103,9 @@ enum class Charts {
                 Log.d(MainActivity.TAG, "Chart: updated $type")
             }
         )
-
-        SideEffect {
-            Log.d(TAG, "Chart: recomposing")
-        }
     }
 
+    // TODO capire se serve
     fun redraw(){
         if (!this::chart.isInitialized)
             return

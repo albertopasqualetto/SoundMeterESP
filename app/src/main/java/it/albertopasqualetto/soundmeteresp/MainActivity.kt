@@ -4,13 +4,16 @@ package it.albertopasqualetto.soundmeteresp
 
 
 // TODO draw rotated screen
+// TODO rememberSaveable per salvare lo stato della rotazione dello schermo (e in altri casi?)
+// TODO change 1000/60 to its result
 
+import android.Manifest
 import android.content.Intent
 import android.content.pm.PackageManager
-import android.media.AudioRecord
 import android.os.Bundle
 import android.util.Log
 import androidx.activity.ComponentActivity
+import androidx.activity.OnBackPressedCallback
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.core.animateFloatAsState
@@ -42,6 +45,10 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Tab
 import androidx.compose.material3.TabRow
 import androidx.compose.material3.Text
+import androidx.compose.material3.windowsizeclass.ExperimentalMaterial3WindowSizeClassApi
+import androidx.compose.material3.windowsizeclass.WindowHeightSizeClass
+import androidx.compose.material3.windowsizeclass.WindowSizeClass
+import androidx.compose.material3.windowsizeclass.calculateWindowSizeClass
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -51,17 +58,17 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
 import androidx.core.app.ActivityCompat
 import it.albertopasqualetto.soundmeteresp.ui.theme.SoundMeterESPTheme
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import android.Manifest
-import androidx.activity.OnBackPressedCallback
 
 
 class MainActivity : ComponentActivity() {
@@ -72,11 +79,11 @@ class MainActivity : ComponentActivity() {
         private val PROGRESS_BAR_WIDTH = 200.dp
 
         fun dBToProgress(dB : Float) : Float {
-            return (dB.toFloat()/2)/100 // scale from 0dB-200dB to 0-1
+            return (dB/2)/100 // scale from 0dB-200dB to 0-1
         }
     }
 
-
+    @OptIn(ExperimentalMaterial3WindowSizeClassApi::class)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
@@ -134,7 +141,8 @@ class MainActivity : ComponentActivity() {
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
                 ) {
-                    AppContent()
+                    val windowSizeClass = calculateWindowSizeClass(this)
+                    AppContent(windowSizeClass)
                 }
             }
         }
@@ -165,10 +173,19 @@ class MainActivity : ComponentActivity() {
         meter = null*/
     }
 
-    @OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
+    @OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class,
+        ExperimentalMaterial3WindowSizeClassApi::class
+    )
     @Preview(showBackground = true)
     @Composable
-    fun AppContent() {
+    fun AppContent(windowSizeClass : WindowSizeClass = WindowSizeClass.calculateFromSize(DpSize(411.dp, 825.dp))){
+        /*if (windowSizeClass.heightSizeClass == WindowHeightSizeClass.Compact) {
+            TODO()
+        } else {
+            TODO()
+        }*/
+        val orientation = LocalConfiguration.current.orientation
+
         val tabs = listOf("Last second", "5 minutes History")
         val pagerState = rememberPagerState(initialPage = 0)
         val coroutineScope = rememberCoroutineScope()
@@ -205,11 +222,12 @@ class MainActivity : ComponentActivity() {
                                 pagerState.animateScrollToPage(index)
                             }
                         },
-                        icon = {when (index) {
-                            0 -> Icon(Icons.Default.Hearing, contentDescription = "Last second")
-                            1 ->Icon(Icons.Default.History, contentDescription = "Last 5 minutes")
-                            else -> Icon(Icons.Default.Star, contentDescription = "")
-                        }}
+                        icon = if (windowSizeClass.heightSizeClass != WindowHeightSizeClass.Compact){
+                            { when (index) {
+                                0 -> Icon(Icons.Default.Hearing, contentDescription = "Last second")
+                                1 ->Icon(Icons.Default.History, contentDescription = "Last 5 minutes")
+                                else -> Icon(Icons.Default.Star, contentDescription = "")
+                        }}} else null
                     )
                 }
             }
@@ -225,7 +243,7 @@ class MainActivity : ComponentActivity() {
             }
         }
     }
-
+    // FIXME ritardo
 
     @Composable
     fun OneSecView() {
@@ -243,8 +261,8 @@ class MainActivity : ComponentActivity() {
             animationSpec = ProgressIndicatorDefaults.ProgressAnimationSpec
         )
 
-        var onUpdateChartOneLeft by remember { mutableStateOf(0) }
-        var onUpdateChartOneRight by remember { mutableStateOf(0) }
+        var updateChartOneLeft by remember { mutableStateOf(0f) }
+        var updateChartOneRight by remember { mutableStateOf(0f) }
 
         Column(
             modifier = Modifier.fillMaxSize().padding(20.dp), verticalArrangement = Arrangement.SpaceEvenly
@@ -268,7 +286,7 @@ class MainActivity : ComponentActivity() {
                         )
                     }
 
-                    Charts.ONE_SEC_LEFT(updateTrigger = onUpdateChartOneLeft, modifier = Modifier.fillMaxSize()) // TODO why becomes a scatter chart?
+                    Charts.ONE_SEC_LEFT(updateTrigger = updateChartOneLeft, modifier = Modifier.fillMaxSize()) // TODO why becomes a scatter chart?
                 }
             }
             Row(modifier = Modifier.weight(1f).padding(2.dp)) { // right
@@ -289,42 +307,46 @@ class MainActivity : ComponentActivity() {
                         )
                     }
 
-                    Charts.ONE_SEC_RIGHT(updateTrigger = onUpdateChartOneRight, modifier = Modifier.fillMaxSize())
+                    Charts.ONE_SEC_RIGHT(updateTrigger = updateChartOneRight, modifier = Modifier.fillMaxSize())
                 }
             }
         }
 
 
-        LaunchedEffect(key1 = Unit, block = {
+        LaunchedEffect(key1 = Unit) {
             var countToSec = 0  // count to 16,6 = 1 sec
-            while (true){
-                if(MeterService.isRecording) {
+            while (true) {
+                if (MeterService.isRecording) {
                     countToSec++
-                    if (countToSec > 16) {
+                    if (countToSec >= 60) {
                         countToSec = 0
-                        val (dBLeftMax, dBRightMax) = Values.getMaxDbLastSec()
+                        val dBLeftMax = Values.lastSecDbLeftList.lastOrNull() ?: continue
+                        val dBRightMax = Values.lastSecDbRightList.lastOrNull() ?: continue
                         Log.d(TAG, "leftMax: $dBLeftMax, rightMax: $dBRightMax")
-                        leftdb = dBLeftMax.toString()
-                        progressLeft = dBToProgress(dBLeftMax.toFloat())
+                        leftdb = "%.${2}f".format(dBLeftMax)
+                        progressLeft = dBToProgress(dBLeftMax)
                         rightdb = dBRightMax.toString()
-                        progressRight = dBToProgress(dBRightMax.toFloat())
+                        rightdb = "%.${2}f".format(dBRightMax)
+                        progressRight = dBToProgress(dBRightMax)
                     }
 
-                    onUpdateChartOneLeft = (0..1_000_000).random()
-                    onUpdateChartOneRight = (0..1_000_000).random()
+                    Log.d(TAG, "lastSecDbLeftList size: ${Values.lastSecDbLeftList.size}, lastSecDbRightList size: ${Values.lastSecDbRightList.size}")
+                    Log.d(TAG, "lastLeft: ${Values.lastLeft}, lastRight: ${Values.lastRight}")
+                    if (Values.lastLeft != 0f) updateChartOneLeft = Values.lastLeft
+                    if (Values.lastRight != 0f) updateChartOneRight = Values.lastRight
                 }
 
                 delay(1000/60)  // 60 Hz (refresh rate of the screen)
                 // TODO verify if second is used correctly
             }
-        } )
+        }
     }
 
 
     @Composable
     fun FiveMinView(){
-        var onUpdateChartFiveLeft by remember { mutableStateOf(0) }
-        var onUpdateChartFiveRight by remember { mutableStateOf(0) }
+        var onUpdateChartFiveLeft by remember { mutableStateOf(0f) }
+        var onUpdateChartFiveRight by remember { mutableStateOf(0f) }
 
 
         Column(modifier = Modifier
@@ -359,8 +381,8 @@ class MainActivity : ComponentActivity() {
                 if(MeterService.isRecording){
                     Log.d(TAG, "Launched effect: FiveMinView")
 
-                    onUpdateChartFiveLeft = (0..1_000_000).random()
-                    onUpdateChartFiveRight = (0..1_000_000).random()
+                    onUpdateChartFiveLeft = (0..1_000_000).random().toFloat()
+                    onUpdateChartFiveRight = (0..1_000_000).random().toFloat()
                 }
 
 
