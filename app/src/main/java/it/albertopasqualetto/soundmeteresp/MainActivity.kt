@@ -3,9 +3,9 @@ package it.albertopasqualetto.soundmeteresp
 // min = 0 dB, max = 200 dB
 
 
-// TODO draw rotated screen
 // TODO rememberSaveable per salvare lo stato della rotazione dello schermo (e in altri casi?)
 // TODO change 1000/60 to its result
+// TODO fix layout margins
 
 import android.Manifest
 import android.content.Intent
@@ -21,6 +21,7 @@ import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -47,7 +48,6 @@ import androidx.compose.material3.TabRow
 import androidx.compose.material3.Text
 import androidx.compose.material3.windowsizeclass.ExperimentalMaterial3WindowSizeClassApi
 import androidx.compose.material3.windowsizeclass.WindowHeightSizeClass
-import androidx.compose.material3.windowsizeclass.WindowSizeClass
 import androidx.compose.material3.windowsizeclass.calculateWindowSizeClass
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -58,12 +58,10 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
-import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
 import androidx.core.app.ActivityCompat
 import it.albertopasqualetto.soundmeteresp.ui.theme.SoundMeterESPTheme
@@ -141,8 +139,7 @@ class MainActivity : ComponentActivity() {
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
                 ) {
-                    val windowSizeClass = calculateWindowSizeClass(this)
-                    AppContent(windowSizeClass)
+                    AppContent()
                 }
             }
         }
@@ -178,13 +175,8 @@ class MainActivity : ComponentActivity() {
     )
     @Preview(showBackground = true)
     @Composable
-    fun AppContent(windowSizeClass : WindowSizeClass = WindowSizeClass.calculateFromSize(DpSize(411.dp, 825.dp))){
-        /*if (windowSizeClass.heightSizeClass == WindowHeightSizeClass.Compact) {
-            TODO()
-        } else {
-            TODO()
-        }*/
-        val orientation = LocalConfiguration.current.orientation
+    fun AppContent(){
+        val windowSizeClass = calculateWindowSizeClass(this)
 
         val tabs = listOf("Last second", "5 minutes History")
         val pagerState = rememberPagerState(initialPage = 0)
@@ -245,6 +237,7 @@ class MainActivity : ComponentActivity() {
     }
     // FIXME ritardo
 
+    @OptIn(ExperimentalMaterial3WindowSizeClassApi::class)
     @Composable
     fun OneSecView() {
         var leftdb by remember { mutableStateOf("Waiting left...") }
@@ -264,51 +257,28 @@ class MainActivity : ComponentActivity() {
         var updateChartOneLeft by remember { mutableStateOf(0f) }
         var updateChartOneRight by remember { mutableStateOf(0f) }
 
-        Column(
-            modifier = Modifier.fillMaxSize().padding(20.dp), verticalArrangement = Arrangement.SpaceEvenly
-        ) {  // outline
-
-            Row(modifier = Modifier.weight(1f).padding(2.dp)) { // left
-                Column(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {  // arrangement in column
-                    Text(text = "Left channel", fontWeight = FontWeight.Bold)
-                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceAround, modifier = Modifier.fillMaxWidth()) {
-                        Text(text = "$leftdb dB")
-                        LinearProgressIndicator(
-                            modifier = Modifier
-                                .semantics(mergeDescendants = true) {}
-                                .padding(10.dp)
-                                .requiredHeight(PROGRESS_BAR_HEIGHT)
-                                .requiredWidth(PROGRESS_BAR_WIDTH),
-                            progress = animatedProgressLeft,
-                        )
-                    }
-
-                    Charts.ONE_SEC_LEFT(updateTrigger = updateChartOneLeft, modifier = Modifier.fillMaxSize()) // TODO why becomes a scatter chart?
-                }
+        val windowSizeClass = calculateWindowSizeClass(this)
+        if (windowSizeClass.heightSizeClass != WindowHeightSizeClass.Compact) {
+            Log.d(TAG, "In column arrangement")
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(12.dp), verticalArrangement = Arrangement.SpaceEvenly
+            ) {  // outline
+                LeftOneSecView(leftdb, animatedProgressLeft, updateChartOneLeft, modifier= Modifier.weight(1f))
+                Spacer(modifier=Modifier.weight(0.1f))
+                RightOneSecView(rightdb, animatedProgressRight, updateChartOneRight, modifier= Modifier.weight(1f))
             }
-            Row(modifier = Modifier.weight(1f).padding(2.dp)) { // right
-                Column(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {  //arrangement in column
-                    Text(text = "Right channel", fontWeight = FontWeight.Bold)
-                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceAround, modifier = Modifier.fillMaxWidth()) {
-                        Text(text = "$rightdb dB")
-                        LinearProgressIndicator(
-                            modifier = Modifier
-                                .semantics(mergeDescendants = true) {}
-                                .padding(10.dp)
-                                .requiredHeight(PROGRESS_BAR_HEIGHT)
-                                .requiredWidth(PROGRESS_BAR_WIDTH),
-                            progress = animatedProgressRight,
-                        )
-                    }
-
-                    Charts.ONE_SEC_RIGHT(updateTrigger = updateChartOneRight, modifier = Modifier.fillMaxSize())
-                }
+        } else {
+            Log.d(TAG, "In row arrangement")
+            Row(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(12.dp), horizontalArrangement = Arrangement.SpaceEvenly
+            ) {  // outline
+                LeftOneSecView(leftdb, animatedProgressLeft, updateChartOneLeft, modifier= Modifier.weight(1f))
+                Spacer(modifier=Modifier.weight(0.1f))
+                RightOneSecView(rightdb, animatedProgressRight, updateChartOneRight, modifier= Modifier.weight(1f))
             }
         }
 
@@ -342,37 +312,91 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    @Composable
+    fun LeftOneSecView(leftdb: String, progessLeft: Float, updateChartOneLeft: Float, modifier: Modifier = Modifier) {
+        Row(modifier = modifier.padding(2.dp)) { // left
+            Column(
+                modifier = modifier.fillMaxWidth(),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {  // arrangement in column
+                Text(text = "Left channel", fontWeight = FontWeight.Bold)
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.Center, modifier = modifier.fillMaxWidth()) {
+                    Text(text = "$leftdb dB", modifier= Modifier
+                        .padding(2.dp, 0.dp, 0.dp, 0.dp)
+                        .weight(1f))
+                    LinearProgressIndicator(
+                        modifier = modifier
+                            .semantics(mergeDescendants = true) {}
+                            .requiredHeight(PROGRESS_BAR_HEIGHT)
+                            .requiredWidth(PROGRESS_BAR_WIDTH)
+                            .weight(2f),
+                        progress = progessLeft,
+                    )
+                }
 
+                Charts.ONE_SEC_LEFT(updateTrigger = updateChartOneLeft, modifier = modifier.fillMaxSize()) // TODO why becomes a scatter chart?
+            }
+        }
+    }
+
+    @Composable
+    fun RightOneSecView(rightdb: String, progessRight: Float, updateChartOneRight: Float, modifier: Modifier = Modifier){
+        Row(modifier = modifier.padding(2.dp)) { // right
+            Column(
+                modifier = modifier.fillMaxWidth(),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {  // arrangement in column
+                Text(text = "Right channel", fontWeight = FontWeight.Bold)
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceAround, modifier = modifier.fillMaxWidth()) {
+                    Text(text = "$rightdb dB", modifier= Modifier
+                        .padding(2.dp, 0.dp, 0.dp, 0.dp)
+                        .weight(1f))
+                    LinearProgressIndicator(
+                        modifier = modifier
+                            .semantics(mergeDescendants = true) {}
+                            .requiredHeight(PROGRESS_BAR_HEIGHT)
+                            .requiredWidth(PROGRESS_BAR_WIDTH)
+                            .weight(1.5f),
+                        progress = progessRight,
+                    )
+                }
+
+                Charts.ONE_SEC_RIGHT(updateTrigger = updateChartOneRight, modifier = modifier.fillMaxSize())
+            }
+        }
+    }
+
+
+    @OptIn(ExperimentalMaterial3WindowSizeClassApi::class)
     @Composable
     fun FiveMinView(){
         var onUpdateChartFiveLeft by remember { mutableStateOf(0f) }
         var onUpdateChartFiveRight by remember { mutableStateOf(0f) }
 
 
-        Column(modifier = Modifier
-            .fillMaxSize()
-            .padding(20.dp), verticalArrangement = Arrangement.SpaceEvenly) {  // outline
-
-            Row(modifier = Modifier.weight(1f).padding(2.dp)) { // left
-                Column(modifier = Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {  // arrangement in column
-                    Text(text = "Left channel", fontWeight = FontWeight.Bold)
-                    Charts.FIVE_MIN_LEFT(updateTrigger = onUpdateChartFiveLeft, modifier = Modifier
-                        .fillMaxSize()
-                        .padding(2.dp)) // TODO why becomes a scatter chart?
-                }
+        val windowSizeClass = calculateWindowSizeClass(this)
+        if (windowSizeClass.heightSizeClass != WindowHeightSizeClass.Compact) {
+            Log.d(TAG, "In column arrangement")
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(12.dp), verticalArrangement = Arrangement.SpaceEvenly
+            ) {  // outline
+                LeftFiveMinView(onUpdateChartFiveLeft, modifier= Modifier.weight(1f))
+                Spacer(modifier = Modifier.weight(0.05f))
+                RightFiveMinView(onUpdateChartFiveRight, modifier= Modifier.weight(1f))
             }
-            Row(modifier = Modifier
-                .weight(1f)
-                .padding(2.dp)) { // right
-                Column(modifier = Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {  //arrangement in column
-                    Text(text = "Right channel", fontWeight = FontWeight.Bold)
-                    Charts.FIVE_MIN_RIGHT(updateTrigger = onUpdateChartFiveRight, modifier = Modifier
-                        .fillMaxSize()
-                        .padding(2.dp))
-                }
+        } else {
+            Log.d(TAG, "In Row arrangement")
+            Row(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(12.dp), horizontalArrangement = Arrangement.SpaceEvenly
+            ) {  // outline
+                LeftFiveMinView(onUpdateChartFiveLeft, modifier= Modifier.weight(1f))
+                Spacer(modifier = Modifier.weight(0.05f))
+                RightFiveMinView(onUpdateChartFiveRight, modifier= Modifier.weight(1f))
             }
-
-
         }
 
 
@@ -390,6 +414,31 @@ class MainActivity : ComponentActivity() {
             }
         })
 
+    }
+
+
+    @Composable
+    fun LeftFiveMinView(updateChartFiveLeft: Float, modifier: Modifier = Modifier){
+        Row(modifier = modifier.padding(2.dp)) { // left
+            Column(modifier = Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {  // arrangement in column
+                Text(text = "Left channel", fontWeight = FontWeight.Bold)
+                Charts.FIVE_MIN_LEFT(updateTrigger = updateChartFiveLeft, modifier = Modifier
+                    .fillMaxSize()
+                    .padding(2.dp)) // TODO why becomes a scatter chart?
+            }
+        }
+    }
+
+    @Composable
+    fun RightFiveMinView(updateChartFiveRight: Float, modifier: Modifier = Modifier){
+        Row(modifier = modifier.padding(2.dp)) { // right
+            Column(modifier = Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {  // arrangement in column
+                Text(text = "Right channel", fontWeight = FontWeight.Bold)
+                Charts.FIVE_MIN_RIGHT(updateTrigger = updateChartFiveRight, modifier = Modifier
+                    .fillMaxSize()
+                    .padding(2.dp))
+            }
+        }
     }
 }
 
