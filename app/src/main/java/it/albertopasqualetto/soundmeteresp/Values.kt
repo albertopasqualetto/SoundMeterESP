@@ -92,6 +92,19 @@ object Values {
 
     //TODO maybe do an average
     private fun downsampleTo60Hz(originalArray: FloatArray): FloatArray {
+        /*return originalArray.asList().chunked(44100/60) { chunk ->
+            chunk.filter { it!=Float.NEGATIVE_INFINITY }
+            .average().toFloat() }.toFloatArray()*/
+
+
+        /*val downsampledArray = originalArray
+            .toList()
+            .windowed(735, 735, true)
+            .map { window ->
+                window.filter { it!=Float.NEGATIVE_INFINITY }
+                .average().toFloat() }
+            .toFloatArray()*/
+
         val originalSampleRate = 44100
         val targetSampleRate = 60
         val downsampleFactor = originalSampleRate / targetSampleRate
@@ -103,6 +116,17 @@ object Values {
             val originalIndex = (i * downsampleFactor)
             downsampledArray[i] = originalArray[originalIndex]
         }
+
+        /*val groupSize = downsampleFactor
+        var inputIndex = 0
+        for (i in downsampledArray.indices) {
+            val group = originalArray.copyOfRange(inputIndex, inputIndex + groupSize)
+            downsampledArray[i] = group.average().toFloat()
+            inputIndex += groupSize
+        }*/
+
+
+//        Log.d(TAG, "downsampleTo60Hz: originalArray size: ${originalArray.size} downsampledArray size: ${downsampledArray.size}")
 
         return downsampledArray
     }

@@ -55,6 +55,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -81,7 +82,6 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    @OptIn(ExperimentalMaterial3WindowSizeClassApi::class)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
@@ -153,13 +153,13 @@ class MainActivity : ComponentActivity() {
 
     override fun onResume() {
         super.onResume()
-        // TODO redraw chart
-        /*Charts.ONE_SEC_LEFT.redraw()
+        Log.d(TAG, "onResume!")
+        // redraw chart
+        Charts.ONE_SEC_LEFT.redraw()
         Charts.ONE_SEC_RIGHT.redraw()
         Charts.FIVE_MIN_LEFT.redraw()
-        Charts.FIVE_MIN_RIGHT.redraw()*/
-        /*onUpdateChartFiveLeft = (0..1_000_000).random()
-        onUpdateChartFiveRight = (0..1_000_000).random()*/
+        Charts.FIVE_MIN_RIGHT.redraw()
+
 //        if (meter?.state == AudioRecord.STATE_INITIALIZED && meter?.recordingState == AudioRecord.RECORDSTATE_STOPPED) meter?.startRecording() ?: Log.d(TAG, "onResume: meter is not stopped")
     }
 
@@ -240,15 +240,15 @@ class MainActivity : ComponentActivity() {
     @OptIn(ExperimentalMaterial3WindowSizeClassApi::class)
     @Composable
     fun OneSecView() {
-        var leftdb by remember { mutableStateOf("Waiting left...") }
-        var rightdb by remember { mutableStateOf("Waiting right...") }
+        var leftdb by rememberSaveable { mutableStateOf("Waiting left...") }
+        var rightdb by rememberSaveable { mutableStateOf("Waiting right...") }
 
-        var progressLeft by remember { mutableStateOf(0.0f) }
+        var progressLeft by rememberSaveable { mutableStateOf(0.0f) }
         val animatedProgressLeft by animateFloatAsState(
             targetValue = progressLeft,
             animationSpec = ProgressIndicatorDefaults.ProgressAnimationSpec
         )
-        var progressRight by remember { mutableStateOf(0.0f) }
+        var progressRight by rememberSaveable { mutableStateOf(0.0f) }
         val animatedProgressRight by animateFloatAsState(
             targetValue = progressRight,
             animationSpec = ProgressIndicatorDefaults.ProgressAnimationSpec
@@ -334,7 +334,7 @@ class MainActivity : ComponentActivity() {
                     )
                 }
 
-                Charts.ONE_SEC_LEFT(updateTrigger = updateChartOneLeft, modifier = modifier.fillMaxSize()) // TODO why becomes a scatter chart?
+                Charts.ONE_SEC_LEFT(updateTrigger = updateChartOneLeft, modifier = modifier.fillMaxSize())
             }
         }
     }
@@ -424,7 +424,7 @@ class MainActivity : ComponentActivity() {
                 Text(text = "Left channel", fontWeight = FontWeight.Bold)
                 Charts.FIVE_MIN_LEFT(updateTrigger = updateChartFiveLeft, modifier = Modifier
                     .fillMaxSize()
-                    .padding(2.dp)) // TODO why becomes a scatter chart?
+                    .padding(2.dp))
             }
         }
     }

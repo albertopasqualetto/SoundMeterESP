@@ -56,7 +56,7 @@ enum class Charts {
                     chart.setMaxVisibleValueCount(0)
 
 
-                    val dataSet = LineDataSet(mutableListOf<Entry>(), "Label") // add entries to dataset
+                    val dataSet = LineDataSet(mutableListOf<Entry>(), "") // add entries to dataset
                     /*dataSet.setColor(...);
                     dataSet.setValueTextColor(...); // styling, ...*/
                     dataSet.setDrawCircles(false)
@@ -64,7 +64,8 @@ enum class Charts {
 
                     val lineData = LineData(dataSet)
                     chart.data = lineData
-                    chart.invalidate() // refresh
+
+                    redraw()
                 }
             },
             update = { chart ->
@@ -105,13 +106,26 @@ enum class Charts {
         )
     }
 
-    // TODO capire se serve
+
     fun redraw(){
+        Log.d(TAG, "Chart: redraw $this")
         if (!this::chart.isInitialized)
             return
 
+        val dataSet = chart.data.getDataSetByIndex(0)
+        dataSet.clear()
 
+        when (this) {
+            ONE_SEC_LEFT -> Values.lastSecDbLeftList.forEachIndexed { index, value -> dataSet.addEntry(Entry(index.toFloat(), value)) }
+            ONE_SEC_RIGHT -> Values.lastSecDbRightList.forEachIndexed { index, value -> dataSet.addEntry(Entry(index.toFloat(), value)) }
+            FIVE_MIN_LEFT -> Values.last5MinDbLeftList.forEachIndexed { index, value -> dataSet.addEntry(Entry(index.toFloat(), value)) }
+            FIVE_MIN_RIGHT -> Values.last5MinDbRightList.forEachIndexed { index, value -> dataSet.addEntry(Entry(index.toFloat(), value)) }
+        }
+
+        chart.notifyDataSetChanged()
+        chart.invalidate()
     }
+
 
     companion object {
         private val TAG = Charts::class.simpleName
