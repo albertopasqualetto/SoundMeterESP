@@ -2,8 +2,10 @@ package it.albertopasqualetto.soundmeteresp
 
 import android.graphics.Color
 import android.util.Log
+import androidx.compose.material3.MaterialTheme.colorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.viewinterop.AndroidView
 import com.github.mikephil.charting.charts.LineChart
 import com.github.mikephil.charting.components.XAxis
@@ -28,21 +30,23 @@ enum class Charts {
             FIVE_MIN_LEFT, FIVE_MIN_RIGHT -> 60*5
         }
 
+        val colorScheme = colorScheme
+
         AndroidView(
             modifier = modifier,
             factory = { context ->
                 LineChart(context).apply {
                     chart = this
                     chart.setTouchEnabled(false)
-                    chart.setDrawGridBackground(true)
+                    chart.setDrawGridBackground(false)
                     chart.setDrawBorders(false)
-                    chart.setBackgroundColor(Color.WHITE)
-                    chart.setGridBackgroundColor(Color.WHITE)
+                    chart.setBackgroundColor(colorScheme.background.toArgb())
                     chart.description.isEnabled = false
                     chart.legend.isEnabled = false
                     chart.axisRight.isEnabled = false
                     chart.xAxis.position = XAxis.XAxisPosition.BOTTOM
-//                    chart.xAxis.setDrawLabels(false)  // TODO uncomment
+                    chart.xAxis.setDrawLabels(false)
+                    chart.axisLeft.textColor = colorScheme.onBackground.toArgb()
                     chart.isFocusable = false
                     chart.isClickable = false
                     chart.isLongClickable = false
@@ -50,15 +54,15 @@ enum class Charts {
                     chart.isAutoScaleMinMaxEnabled = true
 //                    chart.setViewPortOffsets(0f, 0f, 0f, 0f)
                     chart.axisLeft.axisMinimum = 0f
-//                    chart.axisLeft.axisMaximum = 100f   //200f
+//                    chart.axisLeft.axisMaximum = 200f
                     chart.xAxis.axisMinimum = 0f
                     chart.xAxis.axisMaximum = maxEntries.toFloat()
                     chart.setMaxVisibleValueCount(0)
+                    chart.setNoDataText("Waiting for dB data...")
 
 
                     val dataSet = LineDataSet(mutableListOf<Entry>(), "") // add entries to dataset
-                    /*dataSet.setColor(...);
-                    dataSet.setValueTextColor(...); // styling, ...*/
+                    dataSet.color = colorScheme.primary.toArgb()
                     dataSet.setDrawCircles(false)
                     dataSet.lineWidth = 3f
 

@@ -3,7 +3,6 @@ package it.albertopasqualetto.soundmeteresp
 // min = 0 dB, max = 200 dB
 
 
-// TODO rememberSaveable per salvare lo stato della rotazione dello schermo (e in altri casi?)
 // TODO change 1000/60 to its result
 // TODO fix layout margins
 
