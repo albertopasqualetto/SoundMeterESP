@@ -8,13 +8,13 @@ package it.albertopasqualetto.soundmeteresp
 
 import android.Manifest
 import android.content.Intent
-import android.content.pm.PackageManager
+import android.net.Uri
 import android.os.Bundle
+import android.provider.Settings
 import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.OnBackPressedCallback
 import androidx.activity.compose.setContent
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.layout.Arrangement
@@ -31,9 +31,12 @@ import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Hearing
 import androidx.compose.material.icons.filled.History
+import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Star
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
 import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -50,6 +53,8 @@ import androidx.compose.material3.windowsizeclass.WindowHeightSizeClass
 import androidx.compose.material3.windowsizeclass.calculateWindowSizeClass
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.MutableState
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -63,7 +68,11 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import androidx.core.app.ActivityCompat
+import androidx.core.os.bundleOf
+import com.google.accompanist.permissions.ExperimentalPermissionsApi
+import com.google.accompanist.permissions.isGranted
+import com.google.accompanist.permissions.rememberPermissionState
+import com.google.accompanist.permissions.shouldShowRationale
 import it.albertopasqualetto.soundmeteresp.ui.theme.SoundMeterESPTheme
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -94,41 +103,6 @@ class MainActivity : ComponentActivity() {
                 finish()
             }
         })
-
-        val requestPermissionLauncher = registerForActivityResult(ActivityResultContracts.RequestPermission())
-        { isGranted: Boolean ->
-            if (isGranted) {
-                // Permission is granted. Continue the action or workflow in your
-                // app.
-//                Print("Permission granted")
-            } else {
-                // Explain to the user that the feature is unavailable because
-                // the features requires a permission that the user has denied.
-                // At the same time, respect the user's decision. Don't link to
-                // system settings in an effort to convince the user to change
-                // their decision.
-            }
-        }
-
-        if (ActivityCompat.checkSelfPermission(
-                this,
-                Manifest.permission.RECORD_AUDIO
-            ) != PackageManager.PERMISSION_GRANTED
-        ) {
-            // TODO: Consider calling
-            //    ActivityCompat#requestPermissions
-            // here to request the missing permissions, and then overriding
-            //   public void onRequestPermissionsResult(int requestCode, String[] permissions,
-            //                                          int[] grantResults)
-            // to handle the case where the user grants the permission. See the documentation
-            // for ActivityCompat#requestPermissions for more details.
-            requestPermissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
-//                        return
-        }
-
-        val i = Intent(applicationContext, MeterService::class.java)
-        i.putExtra(MeterService.REC_START, true)
-        startForegroundService(i)
 
 
         setContent {
@@ -170,34 +144,41 @@ class MainActivity : ComponentActivity() {
     }
 
     @OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class,
-        ExperimentalMaterial3WindowSizeClassApi::class
+        ExperimentalMaterial3WindowSizeClassApi::class, ExperimentalPermissionsApi::class
     )
     @Preview(showBackground = true)
     @Composable
     fun AppContent(){
+        val permissionState = rememberPermissionState(Manifest.permission.RECORD_AUDIO)
         val windowSizeClass = calculateWindowSizeClass(this)
 
         val tabs = listOf("Last second", "5 minutes History")
         val pagerState = rememberPagerState(initialPage = 0)
         val coroutineScope = rememberCoroutineScope()
         var playOrPauseState by remember { mutableStateOf(0) }
+        val showPermissionDialog = remember { mutableStateOf(false) }
 
         Column(modifier = Modifier.fillMaxWidth()) {
             CenterAlignedTopAppBar(title = { Text("Sound Meter", maxLines = 1, overflow = TextOverflow.Ellipsis) },
                                     actions = { IconButton(onClick = {
-                                        if (playOrPauseState == 0){ // playing
-                                            val i = Intent(applicationContext, MeterService::class.java)
-                                            stopService(i)
-                                        } else { // paused
-                                            val i = Intent(applicationContext, MeterService::class.java)
-                                            i.putExtra(MeterService.REC_START, true)
-                                            startForegroundService(i)
+                                        Log.d(TAG, "click, showPermissionDialog: $showPermissionDialog")
+                                        if (!permissionState.status.isGranted){
+                                            showPermissionDialog.value = true
+                                            permissionState.launchPermissionRequest()
+                                        } else {
+                                            if (playOrPauseState == 0){ // paused
+                                                val i = Intent(applicationContext, MeterService::class.java)
+                                                i.putExtra(MeterService.REC_START, true)
+                                                startForegroundService(i)
+                                            } else { // playing
+                                                val i = Intent(applicationContext, MeterService::class.java)
+                                                stopService(i)
+                                            }
+                                            playOrPauseState = if (playOrPauseState==0) 1 else 0
                                         }
-
-                                        playOrPauseState = if (playOrPauseState==0) 1 else 0
                                     }) {
                                         Icon(
-                                            imageVector = if (playOrPauseState==0) Icons.Filled.Pause else Icons.Filled.PlayArrow,
+                                            imageVector = if (playOrPauseState==0) Icons.Filled.PlayArrow else Icons.Filled.Pause,
                                             contentDescription = "Start recording"
                                         )
                                         }
@@ -231,6 +212,31 @@ class MainActivity : ComponentActivity() {
                     0 -> OneSecView()
                     1 -> FiveMinView()
                 }
+            }
+
+            if (!permissionState.status.isGranted){
+                Log.d(TAG, "AppContent: permission NOT granted")
+                showPermissionDialog.value = true
+                if (permissionState.status.shouldShowRationale) {
+                    Log.d(TAG, "AppContent: shouldShowRationale")
+                    NoPermissionDialog(openDialog = showPermissionDialog, shouldShowRationale = true)
+                } else {
+                    Log.d(TAG, "AppContent: NO shouldShowRationale")
+                    NoPermissionDialog(openDialog = showPermissionDialog, shouldShowRationale = false)
+                }
+            } else {
+                Log.d(TAG, "AppContent: permission granted")
+                val i = Intent(applicationContext, MeterService::class.java)
+                i.putExtra(MeterService.REC_START, true)
+                startForegroundService(i)
+                playOrPauseState = 1
+            }
+        }
+
+        SideEffect {
+            Log.d(TAG, "AppContent: recomposing")
+            if (!permissionState.status.isGranted){
+                permissionState.launchPermissionRequest()
             }
         }
     }
@@ -439,6 +445,47 @@ class MainActivity : ComponentActivity() {
             }
         }
     }
+
+
+    @Preview
+    @Composable
+    fun NoPermissionDialog(openDialog: MutableState<Boolean> = mutableStateOf(true), shouldShowRationale: Boolean = true) {
+//        var openDialog by remember { mutableStateOf(true) }
+        Log.d(TAG, "NoPermissionDialog, onShowPermissionDialog: $openDialog")
+
+        if (!openDialog.value) return
+        AlertDialog(
+            onDismissRequest = { openDialog.value = false },
+            icon = { Icon(Icons.Filled.Mic, contentDescription = null) },
+            title = { Text(text = "Permissions not granted") },
+            text = { Text(text = "Please grant permission to record audio in order to use this app") },
+            dismissButton = if(!shouldShowRationale) {{
+                    Button(onClick = { openDialog.value = false }) {
+                        Text(text = "Later")
+                    }
+                }} else null,
+            confirmButton = if(!shouldShowRationale) {
+                {
+                    Button(onClick = {
+                        val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS)
+                        val uri = Uri.fromParts("package", packageName, null)
+                        intent.data = uri
+                        intent.putExtra(":settings:show_fragment_args", bundleOf(":settings:fragment_args_key" to "permission_settings"))   // hightlight the permission row
+                        startActivity(intent)
+                    }) {
+                        Text(text = "Go to settings")
+                    }
+                }} else {
+                {
+                    Button(onClick = { openDialog.value = false }) {
+                        Text(text = "OK")
+                    }
+
+                }}
+        )
+    }
+
+
 }
 
 
