@@ -1,6 +1,5 @@
 package it.albertopasqualetto.soundmeteresp
 
-import android.graphics.Color
 import android.util.Log
 import androidx.compose.material3.MaterialTheme.colorScheme
 import androidx.compose.runtime.Composable
@@ -26,7 +25,7 @@ enum class Charts {
         val type = this
 
         val maxEntries = when(type) {
-            ONE_SEC_LEFT, ONE_SEC_RIGHT -> 90
+            ONE_SEC_LEFT, ONE_SEC_RIGHT -> 60
             FIVE_MIN_LEFT, FIVE_MIN_RIGHT -> 60*5
         }
 
@@ -57,8 +56,8 @@ enum class Charts {
 //                    chart.axisLeft.axisMaximum = 200f
                     chart.xAxis.axisMinimum = 0f
                     chart.xAxis.axisMaximum = maxEntries.toFloat()
+                    chart.xAxis.setLabelCount(7, true)
                     chart.setMaxVisibleValueCount(0)
-                    chart.setNoDataText("Waiting for dB data...")
 
 
                     val dataSet = LineDataSet(mutableListOf<Entry>(), "") // add entries to dataset

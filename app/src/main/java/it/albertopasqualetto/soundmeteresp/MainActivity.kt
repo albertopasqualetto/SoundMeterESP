@@ -3,7 +3,6 @@ package it.albertopasqualetto.soundmeteresp
 // min = 0 dB, max = 200 dB
 
 
-// TODO change 1000/60 to its result
 // TODO fix layout margins
 
 import android.Manifest
@@ -86,7 +85,7 @@ class MainActivity : ComponentActivity() {
         private val PROGRESS_BAR_WIDTH = 200.dp
 
         fun dBToProgress(dB : Float) : Float {
-            return (dB/2)/100 // scale from 0dB-200dB to 0-1
+            return dB/200 // scale from 0dB-200dB to 0-1
         }
     }
 
@@ -240,7 +239,7 @@ class MainActivity : ComponentActivity() {
             }
         }
     }
-    // FIXME ritardo
+    // TODO controllare se i valori di sx e dx sono diversi
 
     @OptIn(ExperimentalMaterial3WindowSizeClassApi::class)
     @Composable
@@ -293,7 +292,7 @@ class MainActivity : ComponentActivity() {
             while (true) {
                 if (MeterService.isRecording) {
                     countToSec++
-                    if (countToSec >= 60) {
+                    if (countToSec >= 62) { // 1000/16 ~= 62
                         countToSec = 0
                         val dBLeftMax = Values.lastSecDbLeftList.lastOrNull() ?: continue
                         val dBRightMax = Values.lastSecDbRightList.lastOrNull() ?: continue
@@ -311,8 +310,7 @@ class MainActivity : ComponentActivity() {
                     if (Values.lastRight != 0f) updateChartOneRight = Values.lastRight
                 }
 
-                delay(1000/60)  // 60 Hz (refresh rate of the screen)
-                // TODO verify if second is used correctly
+                delay(16)  // ~16 ms = 60 Hz (refresh rate of the screen)
             }
         }
     }

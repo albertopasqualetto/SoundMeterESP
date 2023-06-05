@@ -143,7 +143,7 @@ class MeterService : Service() {
             var countToSec = 0  // count to 16,6 = 1 sec
             while(isReading){
                 countToSec++
-                if (countToSec >= 60) {
+                if (countToSec >= 62) { // 1000/16 ~= 62
                     countToSec = 0
                     Values.getMaxDbLastSec()
 //                    Log.d(TAG, "Saved last second's data")
@@ -152,7 +152,7 @@ class MeterService : Service() {
                 Values.getFirstFromQueueLeft()
                 Values.getFirstFromQueueRight()
 //                Log.d(TAG, "Saved real time data")
-                sleep(1000/60)
+                sleep(16)   // ~16 ms = 60 Hz
             }
         }
 
