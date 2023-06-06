@@ -4,6 +4,7 @@ package it.albertopasqualetto.soundmeteresp
 
 
 // TODO fix layout margins
+// TODO adaptive icon
 
 import android.Manifest
 import android.content.Intent

@@ -51,7 +51,7 @@ class MeterService : Service() {
             Notification.Builder(applicationContext, CHANNEL_ID)
         notificationBuilder.setContentTitle("SoundMeterESP")
         notificationBuilder.setContentText("Recording sounds...")
-        notificationBuilder.setSmallIcon(R.mipmap.ear_launcher_round)
+        notificationBuilder.setSmallIcon(R.drawable.ic_stat_name)
         val goToMainActivityIntent = Intent(applicationContext, MainActivity::class.java).apply {
 //            this.flags = Intent.FLAG_ACTIVITY_REORDER_TO_FRONT
             this.flags = Intent.FLAG_ACTIVITY_SINGLE_TOP
@@ -67,7 +67,7 @@ class MeterService : Service() {
 
         wakeLock = (getSystemService(Context.POWER_SERVICE) as PowerManager).run {
             newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "SoundMeterESP::$TAG").apply {
-                acquire(10*60*1000L /*10 minutes*/)
+                acquire(10*60*1000L /*10 minutes*/) // TODO check cosa succede dopo 10 minuti
             }
         }
 
