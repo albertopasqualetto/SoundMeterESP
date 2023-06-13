@@ -10,7 +10,7 @@ android {
     defaultConfig {
         applicationId "it.albertopasqualetto.soundmeteresp"
         minSdk 31
-        targetSdk 33
+        targetSdk 31
         versionCode 1
         versionName "1.0"
 
@@ -55,7 +55,7 @@ dependencies {
     implementation "androidx.compose.ui:ui:$compose_version"
     implementation "androidx.compose.ui:ui-tooling-preview:$compose_version"
     implementation "androidx.compose.material3:material3:$compose_material3_version"
-    implementation "androidx.compose.material:material-icons-extended:1.4.3"    // remove and download single icons
+    implementation "androidx.compose.material:material-icons-extended:1.4.3"    // TODO remove and download single icons
     implementation "androidx.compose.material3:material3-window-size-class:$compose_material3_version"
     implementation 'androidx.lifecycle:lifecycle-livedata:2.6.1'
     implementation 'com.github.PhilJay:MPAndroidChart:v3.1.0'
