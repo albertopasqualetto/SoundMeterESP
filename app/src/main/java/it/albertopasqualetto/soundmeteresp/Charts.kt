@@ -86,9 +86,9 @@ enum class Charts {
                         FIVE_MIN_LEFT -> Entry(set.entryCount.toFloat(), Values.last5MinDbLeftList[set.entryCount])
                         FIVE_MIN_RIGHT -> Entry(set.entryCount.toFloat(), Values.last5MinDbRightList[set.entryCount])
                     }
-                    Log.d(MainActivity.TAG, "Chart: newEntry: $newEntry, $type")
+                    Log.d(TAG, "Chart: newEntry: $newEntry, $type")
                 } catch (e : Exception){
-                    Log.d(MainActivity.TAG, "Chart: exception: $e, $type")
+                    Log.d(TAG, "Chart: exception: $e, $type")
                     return@AndroidView
                 }
 
@@ -104,7 +104,7 @@ enum class Charts {
 //                chart.data.notifyDataChanged()
                 chart.notifyDataSetChanged()    // let the chart know it's data changed
                 chart.invalidate()
-                Log.d(MainActivity.TAG, "Chart: updated $type")
+                Log.d(TAG, "Chart: updated $type")
             }
         )
     }

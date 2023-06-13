@@ -113,7 +113,11 @@ class MeterService : Service() {
             isRecording = true
             meter?.startRecording()
 
-            sleep(1000)
+            try{
+                sleep(1000)
+            } catch (e: InterruptedException) {
+                currentThread().interrupt()
+            }
             // Start recording loop
             while (isRecording)
                 if (meter?.recordingState == AudioRecord.RECORDSTATE_RECORDING) readLeftRightMeter(meter!!)
@@ -138,7 +142,11 @@ class MeterService : Service() {
 
         override fun run() {
             super.run()
-            sleep(2000)
+            try{
+                sleep(2000)
+            } catch (e: InterruptedException) {
+                currentThread().interrupt()
+            }
 
             var countToSec = 0  // count to 16,6 = 1 sec
             while(isReading){

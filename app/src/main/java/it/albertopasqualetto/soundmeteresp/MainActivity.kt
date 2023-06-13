@@ -4,7 +4,7 @@ package it.albertopasqualetto.soundmeteresp
 
 
 // TODO fix layout margins
-// TODO adaptive icon
+// TODO comment code with kt doc
 
 import android.Manifest
 import android.content.Intent
@@ -317,7 +317,7 @@ class MainActivity : ComponentActivity() {
     }
 
     @Composable
-    fun LeftOneSecView(leftdb: String, progessLeft: Float, updateChartOneLeft: Float, modifier: Modifier = Modifier) {
+    fun LeftOneSecView(leftdb: String, progressLeft: Float, updateChartOneLeft: Float, modifier: Modifier = Modifier) {
         Row(modifier = modifier.padding(2.dp)) { // left
             Column(
                 modifier = modifier.fillMaxWidth(),
@@ -334,7 +334,7 @@ class MainActivity : ComponentActivity() {
                             .requiredHeight(PROGRESS_BAR_HEIGHT)
                             .requiredWidth(PROGRESS_BAR_WIDTH)
                             .weight(2f),
-                        progress = progessLeft,
+                        progress = progressLeft,
                     )
                 }
 
@@ -344,7 +344,7 @@ class MainActivity : ComponentActivity() {
     }
 
     @Composable
-    fun RightOneSecView(rightdb: String, progessRight: Float, updateChartOneRight: Float, modifier: Modifier = Modifier){
+    fun RightOneSecView(rightdb: String, progressRight: Float, updateChartOneRight: Float, modifier: Modifier = Modifier){
         Row(modifier = modifier.padding(2.dp)) { // right
             Column(
                 modifier = modifier.fillMaxWidth(),
@@ -361,7 +361,7 @@ class MainActivity : ComponentActivity() {
                             .requiredHeight(PROGRESS_BAR_HEIGHT)
                             .requiredWidth(PROGRESS_BAR_WIDTH)
                             .weight(1.5f),
-                        progress = progessRight,
+                        progress = progressRight,
                     )
                 }
 
