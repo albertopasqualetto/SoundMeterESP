@@ -70,6 +70,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.core.os.bundleOf
 import com.google.accompanist.permissions.ExperimentalPermissionsApi
+import com.google.accompanist.permissions.PermissionState
 import com.google.accompanist.permissions.isGranted
 import com.google.accompanist.permissions.rememberPermissionState
 import com.google.accompanist.permissions.shouldShowRationale
@@ -90,6 +91,9 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+//    var isPlaying : Boolean = false // TODO ridondante con isRecording?
+
+    @OptIn(ExperimentalPermissionsApi::class)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
@@ -98,8 +102,6 @@ class MainActivity : ComponentActivity() {
         // Register a callback that calls the finish() method when the back button is pressed.
         this.onBackPressedDispatcher.addCallback(object : OnBackPressedCallback(true) {
             override fun handleOnBackPressed() {
-                val i = Intent(applicationContext, MeterService::class.java)
-                stopService(i)
                 finish()
             }
         })
@@ -112,7 +114,14 @@ class MainActivity : ComponentActivity() {
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
                 ) {
-                    AppContent()
+                    val permissionState = rememberPermissionState(Manifest.permission.RECORD_AUDIO)
+                    if (permissionState.status.isGranted){
+                        val i = Intent(applicationContext, MeterService::class.java)
+                        startForegroundService(i)
+//                        isPlaying = true
+                        Log.d(TAG, "onCreate: start service")
+                    }
+                    AppContent(permissionState)
                 }
             }
         }
@@ -122,17 +131,30 @@ class MainActivity : ComponentActivity() {
         super.onPause()
         /*recorderThread = null
         if (meter?.state == AudioRecord.STATE_INITIALIZED && meter?.recordingState == AudioRecord.RECORDSTATE_RECORDING) meter?.stop() ?: Log.d(TAG, "onPause: meter is not recording")*/
+        val i = Intent(applicationContext, MeterService::class.java)
+        val wasRecording = MeterService.isRecording
+        stopService(i)
+//        if (isPlaying && !isFinishing) {
+        if (wasRecording && !isFinishing) {
+            i.putExtra(MeterService.MAIN_ACTIVITY_PAUSE, true)
+            startForegroundService(i)
+        }
     }
 
     override fun onResume() {
         super.onResume()
         Log.d(TAG, "onResume!")
+//        if (isPlaying) {
+        if (MeterService.isRecording) {
+            val i = Intent(applicationContext, MeterService::class.java)
+            startForegroundService(i)
+        }
+
         // redraw chart
         Charts.ONE_SEC_LEFT.redraw()
         Charts.ONE_SEC_RIGHT.redraw()
         Charts.FIVE_MIN_LEFT.redraw()
         Charts.FIVE_MIN_RIGHT.redraw()
-
 //        if (meter?.state == AudioRecord.STATE_INITIALIZED && meter?.recordingState == AudioRecord.RECORDSTATE_STOPPED) meter?.startRecording() ?: Log.d(TAG, "onResume: meter is not stopped")
     }
 
@@ -146,16 +168,16 @@ class MainActivity : ComponentActivity() {
     @OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class,
         ExperimentalMaterial3WindowSizeClassApi::class, ExperimentalPermissionsApi::class
     )
-    @Preview(showBackground = true)
+//    @Preview(showBackground = true)
     @Composable
-    fun AppContent(){
-        val permissionState = rememberPermissionState(Manifest.permission.RECORD_AUDIO)
+    fun AppContent(permissionState: PermissionState) {
         val windowSizeClass = calculateWindowSizeClass(this)
 
         val tabs = listOf("Last second", "5 minutes History")
         val pagerState = rememberPagerState(initialPage = 0)
         val coroutineScope = rememberCoroutineScope()
-        var playOrPauseState by remember { mutableStateOf(0) }
+//        var playOrPauseState by remember { mutableStateOf(if(isPlaying) 1 else 0) }
+        var playOrPauseState by remember { mutableStateOf(if(MeterService.isRecording) 1 else 0) }
         val showPermissionDialog = remember { mutableStateOf(false) }
 
         Column(modifier = Modifier.fillMaxWidth()) {
@@ -168,11 +190,12 @@ class MainActivity : ComponentActivity() {
                                         } else {
                                             if (playOrPauseState == 0){ // paused
                                                 val i = Intent(applicationContext, MeterService::class.java)
-                                                i.putExtra(MeterService.REC_START, true)
                                                 startForegroundService(i)
+//                                                isPlaying = true
                                             } else { // playing
                                                 val i = Intent(applicationContext, MeterService::class.java)
                                                 stopService(i)
+//                                                isPlaying = false
                                             }
                                             playOrPauseState = if (playOrPauseState==0) 1 else 0
                                         }
@@ -216,6 +239,10 @@ class MainActivity : ComponentActivity() {
 
             if (!permissionState.status.isGranted){
                 Log.d(TAG, "AppContent: permission NOT granted")
+                playOrPauseState = 0
+//                isPlaying = false
+                val i = Intent(applicationContext, MeterService::class.java)
+                stopService(i)
                 showPermissionDialog.value = true
                 if (permissionState.status.shouldShowRationale) {
                     Log.d(TAG, "AppContent: shouldShowRationale")
@@ -225,11 +252,8 @@ class MainActivity : ComponentActivity() {
                     NoPermissionDialog(openDialog = showPermissionDialog, shouldShowRationale = false)
                 }
             } else {
-                Log.d(TAG, "AppContent: permission granted")
-                val i = Intent(applicationContext, MeterService::class.java)
-                i.putExtra(MeterService.REC_START, true)
-                startForegroundService(i)
                 playOrPauseState = 1
+                Log.d(TAG, "AppContent: permission granted")
             }
         }
 
@@ -240,7 +264,6 @@ class MainActivity : ComponentActivity() {
             }
         }
     }
-    // TODO controllare se i valori di sx e dx sono diversi
 
     @OptIn(ExperimentalMaterial3WindowSizeClassApi::class)
     @Composable
@@ -469,7 +492,7 @@ class MainActivity : ComponentActivity() {
                         val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS)
                         val uri = Uri.fromParts("package", packageName, null)
                         intent.data = uri
-                        intent.putExtra(":settings:show_fragment_args", bundleOf(":settings:fragment_args_key" to "permission_settings"))   // hightlight the permission row
+                        intent.putExtra(":settings:show_fragment_args", bundleOf(":settings:fragment_args_key" to "permission_settings"))   // highlight the permission row
                         startActivity(intent)
                     }) {
                         Text(text = "Go to settings")

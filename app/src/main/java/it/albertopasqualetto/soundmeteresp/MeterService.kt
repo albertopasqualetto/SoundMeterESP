@@ -43,10 +43,16 @@ class MeterService : Service() {
         return null // Clients can not bind to this service
     }
 
+    @SuppressLint("WakelockTimeout")    // only used while MainActivity is running, handling in MainActivity.onPause
     override fun onStartCommand(intent: Intent, flags: Int, startId: Int): Int {
-        if (isRecording) return START_NOT_STICKY
+        if (isRecording){
+            Log.d(TAG, "Service already running")
+            wakeLock?.acquire() // re-acquiring wakelock without timeout since now it is on screen
+            return START_NOT_STICKY
+        }
 
         // Build a notification
+        // if the system is API level 33 or higher, if the user does not allow the notification, its permission won't be requested until a reinstall
         val notificationBuilder: Notification.Builder =
             Notification.Builder(applicationContext, CHANNEL_ID)
         notificationBuilder.setContentTitle("SoundMeterESP")
@@ -66,13 +72,16 @@ class MeterService : Service() {
         Log.d(TAG, "rec: startForeground")
 
         wakeLock = (getSystemService(Context.POWER_SERVICE) as PowerManager).run {
-            newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "SoundMeterESP::$TAG").apply {
-                acquire(10*60*1000L /*10 minutes*/) // TODO check cosa succede dopo 10 minuti
+            newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "SoundMeterESP:$TAG").apply {
+                setReferenceCounted(false)
+                if (intent.getBooleanExtra(MAIN_ACTIVITY_PAUSE, false))
+                    acquire(10*60*1000L /*10 minutes*/) // remain awake for 10 minutes if MainActivity has been paused
+                else
+                    acquire()   // starting service at startup or with play button
             }
         }
 
 
-//        t = thread(start = true, isDaemon = true, name = "MeterServiceThread") { rec() }
         Log.d(TAG, "Start recording thread")
         recordThread = AudioRecordThread()
         recordThread.start()
@@ -194,19 +203,17 @@ class MeterService : Service() {
         private var meter: AudioRecord? = null
 
         private const val CHANNEL_ID = "soundmeteresp"
-        const val REC_START = "MeterStart"
-        const val REC_STOP = "MeterStop"
+        const val MAIN_ACTIVITY_PAUSE = "MainActivityPause"
 
         var isRecording = false
 
         private val TAG = MeterService::class.simpleName
 
-        const val AUDIO_SOURCE = MediaRecorder.AudioSource.UNPROCESSED
-        const val SAMPLE_RATE = 44100
+        const val AUDIO_SOURCE = MediaRecorder.AudioSource.MIC  // `MediaRecorder.AudioSource.UNPROCESSED` is not supported on all devices. Unfortunately `MediaRecorder.AudioSource.UNPROCESSED` applies some kind of noise reduction which is not wanted here.
+        const val SAMPLE_RATE = 44100   // using 44100 Hz since it should be supported on all devices
         const val CHANNEL_CONFIG = AudioFormat.CHANNEL_IN_STEREO
         const val AUDIO_FORMAT = AudioFormat.ENCODING_PCM_16BIT
-        private const val BUFFER_SIZE_FACTOR = 2    // under load this will guarantee a smooth recording
-        val BUFFER_SIZE = AudioRecord.getMinBufferSize(SAMPLE_RATE, CHANNEL_CONFIG, AUDIO_FORMAT) * BUFFER_SIZE_FACTOR
+        val BUFFER_SIZE = AudioRecord.getMinBufferSize(SAMPLE_RATE, CHANNEL_CONFIG, AUDIO_FORMAT)   // getMinBufferSize returns bytes, not shorts -> implicit *2 multiplication factor (which guarantees a smooth recording under load)
     }
 
 
