@@ -36,12 +36,12 @@ object Values {
     }
     
     private fun updateLast5MinDbLeft(newMaxLeft: Float) {
-        while (last5MinDbLeftList.size >= 1*60*5) { last5MinDbLeftList.removeFirst() }
+        while (last5MinDbLeftList.size > 1*60*5) { last5MinDbLeftList.removeFirst() }
         last5MinDbLeftList.add(newMaxLeft)
     }
 
     private fun updateLast5MinDbRight(newMaxRight: Float) {
-        while (last5MinDbRightList.size >= 1*60*5) { last5MinDbRightList.removeFirst() }
+        while (last5MinDbRightList.size > 1*60*5) { last5MinDbRightList.removeFirst() }
         last5MinDbRightList.add(newMaxRight)
     }
 
@@ -87,46 +87,49 @@ object Values {
         }
 
         lastRight = out ?: 0f
+//        Log.d(TAG, "getFirstFromQueueLeft: $out")
         return out
     }
 
+
     //TODO maybe do an average
     private fun downsampleTo60Hz(originalArray: FloatArray): FloatArray {
-        /*return originalArray.asList().chunked(44100/60) { chunk ->
-            chunk.filter { it!=Float.NEGATIVE_INFINITY }
-            .average().toFloat() }.toFloatArray()*/
-
+        val originalSampleRate = MeterService.SAMPLE_RATE
+        val targetSampleRate = 60
+        val downsampleFactor = originalSampleRate / targetSampleRate
 
         /*val downsampledArray = originalArray
             .toList()
-            .windowed(735, 735, true)
+            .windowed(downsampleFactor, downsampleFactor, true)
             .map { window ->
                 window.filter { it!=Float.NEGATIVE_INFINITY }
                 .average().toFloat() }
             .toFloatArray()*/
 
-        val originalSampleRate = 44100
-        val targetSampleRate = 60
-        val downsampleFactor = originalSampleRate / targetSampleRate
+        /*return originalArray.asList().chunked(downsampleFactor) { chunk ->
+            chunk.filter { it!=Float.NEGATIVE_INFINITY }
+            .average().toFloat() }.toFloatArray()*/
+
 
         val downsampledArraySize = originalArray.size / downsampleFactor
         val downsampledArray = FloatArray(downsampledArraySize)
+//        Log.d(TAG, "downsampleTo60Hz: originalArray size: ${originalArray.size} downsampledArray size: ${downsampledArray.size}")
 
-        for (i in 0 until downsampledArraySize) {
+        /*var acc=0f
+        var from=0
+        for (i in 0 until downsampledArraySize*downsampleFactor) {
+            acc+=originalArray[i]
+            if (i%downsampleFactor==0) {
+                downsampledArray[from] = acc/downsampleFactor
+                acc=0f
+                from++
+            }
+        }*/
+
+        for (i in 0 until downsampledArraySize) { // FUNZIONANTE
             val originalIndex = (i * downsampleFactor)
             downsampledArray[i] = originalArray[originalIndex]
         }
-
-        /*val groupSize = downsampleFactor
-        var inputIndex = 0
-        for (i in downsampledArray.indices) {
-            val group = originalArray.copyOfRange(inputIndex, inputIndex + groupSize)
-            downsampledArray[i] = group.average().toFloat()
-            inputIndex += groupSize
-        }*/
-
-
-//        Log.d(TAG, "downsampleTo60Hz: originalArray size: ${originalArray.size} downsampledArray size: ${downsampledArray.size}")
 
         return downsampledArray
     }

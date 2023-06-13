@@ -50,10 +50,10 @@ enum class Charts {
                     chart.isClickable = false
                     chart.isLongClickable = false
                     chart.isDoubleTapToZoomEnabled = false
-                    chart.isAutoScaleMinMaxEnabled = true
+//                    chart.isAutoScaleMinMaxEnabled = true
 //                    chart.setViewPortOffsets(0f, 0f, 0f, 0f)
                     chart.axisLeft.axisMinimum = 0f
-//                    chart.axisLeft.axisMaximum = 200f
+                    chart.axisLeft.axisMaximum = 150f
                     chart.xAxis.axisMinimum = 0f
                     chart.xAxis.axisMaximum = maxEntries.toFloat()
                     chart.xAxis.setLabelCount(7, true)
