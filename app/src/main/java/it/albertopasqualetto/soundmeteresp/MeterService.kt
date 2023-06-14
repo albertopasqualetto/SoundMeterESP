@@ -22,7 +22,7 @@ class MeterService : Service() {
     private lateinit var recordThread: AudioRecordThread
     private lateinit var readThread: AudioReadThread
 
-    @SuppressLint("MissingPermission")
+    @SuppressLint("MissingPermission")  // permission is requested in MainActivity
     override fun onCreate() {
         super.onCreate()
         meter = AudioRecord(AUDIO_SOURCE, SAMPLE_RATE, CHANNEL_CONFIG, AUDIO_FORMAT, BUFFER_SIZE)
@@ -43,7 +43,7 @@ class MeterService : Service() {
         return null // Clients can not bind to this service
     }
 
-    @SuppressLint("WakelockTimeout")    // only used while MainActivity is running, handling in MainActivity.onPause
+    @SuppressLint("WakelockTimeout")    // only used while MainActivity is on screen, handling in MainActivity.onPause
     override fun onStartCommand(intent: Intent, flags: Int, startId: Int): Int {
         if (isRecording){
             Log.d(TAG, "Service already running")
