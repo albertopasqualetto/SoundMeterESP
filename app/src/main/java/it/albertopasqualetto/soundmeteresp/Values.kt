@@ -13,15 +13,19 @@ object Values {
     // new items are added at the end, and when shown in graphs they pop from the beginning
     private var leftQueue : ConcurrentLinkedQueue<Float> = ConcurrentLinkedQueue<Float>()
     private var rightQueue : ConcurrentLinkedQueue<Float> = ConcurrentLinkedQueue<Float>()
+
     // queue popped element
     var lastLeft : Float = 0f
     var lastRight : Float = 0f
+
     // when items pop from queue it is added to the list of the last second values
     var lastSecDbLeftList = mutableListOf<Float>()  // max size = 1 sec = MeterService.SAMPLE_RATE / 60
     var lastSecDbRightList = mutableListOf<Float>()  // max size = 1 sec = MeterService.SAMPLE_RATE / 60
+
     // count the number of items added to the last second lists
     private var leftCount = 0
     private var rightCount = 0
+
     // when last second lists are full they are emptied and the max value is added to the last 5 min list
     var last5MinDbLeftList = mutableListOf<Float>()  // max size = 5 min = 1*60*5
     var last5MinDbRightList = mutableListOf<Float>()  // max size = 5 min = 1*60*5

@@ -429,6 +429,7 @@ class MainActivity : ComponentActivity() {
                 if(MeterService.isRecording){
                     Log.d(TAG, "Launched effect: FiveMinView")
 
+                    // used to trigger recomposition:
                     onUpdateChartFiveLeft = (0..1_000_000).random().toFloat()
                     onUpdateChartFiveRight = (0..1_000_000).random().toFloat()
                 }

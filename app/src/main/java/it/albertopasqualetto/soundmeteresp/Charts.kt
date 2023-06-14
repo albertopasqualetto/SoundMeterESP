@@ -12,7 +12,14 @@ import com.github.mikephil.charting.data.Entry
 import com.github.mikephil.charting.data.LineData
 import com.github.mikephil.charting.data.LineDataSet
 
-//@Suppress("UNUSED_EXPRESSION")
+/**
+ * A Composable chart based on the MPAndroidChart library.
+ * It is a wrapper around the LineChart class.
+ * It is used to draw the charts in the app.
+ * It can be of different types, each one with its own settings: [ONE_SEC_LEFT], [ONE_SEC_RIGHT], [FIVE_MIN_LEFT], [FIVE_MIN_RIGHT].
+ *
+ * Used by triggering its [invoke] operator.
+ */
 enum class Charts {
     ONE_SEC_LEFT, ONE_SEC_RIGHT,
     FIVE_MIN_LEFT, FIVE_MIN_RIGHT;
@@ -20,6 +27,12 @@ enum class Charts {
     private lateinit var chart: LineChart
 
 
+    /**
+     * Draws the chart of the specified [Charts] type.
+     *
+     * @param updateTrigger the value that triggers the chart recomposition (it is a trick to trigger it)
+     * @param modifier the modifier to be applied to the chart
+     */
     @Composable
     operator fun invoke(updateTrigger : Float, modifier: Modifier = Modifier){
         val type = this
