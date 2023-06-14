@@ -1,10 +1,9 @@
 package it.albertopasqualetto.soundmeteresp
 
-// min = 0 dB, max = 200 dB
+// min = 0 dB, max = 200 dB TODO ? decidere
 
 
 // TODO fix layout margins
-// TODO comment code with kt doc
 
 import android.Manifest
 import android.content.Intent

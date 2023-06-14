@@ -109,6 +109,10 @@ enum class Charts {
     }
 
 
+    /**
+     * Redraws the chart.
+     * To be used when the chart updates were not computed by the update function for a while (for example when the app goes trough [Activity.onResume][android.app.Activity.onResume]).
+     */
     fun redraw(){
         Log.d(TAG, "Chart: redraw $this")
         if (!this::chart.isInitialized)

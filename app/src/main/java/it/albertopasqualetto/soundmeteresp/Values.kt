@@ -27,24 +27,49 @@ object Values {
     var last5MinDbRightList = mutableListOf<Float>()  // max size = 5 min = 1*60*5
 
 
-    fun updateQueues(leftMeasuredVals: FloatArray, rightMeasuredVals: FloatArray, readN: Int) {
-        val leftVals = downsampleTo60Hz(leftMeasuredVals.sliceArray(0 until readN/2)).filter { it!=Float.NEGATIVE_INFINITY }     // downsample to 60Hz (from 44100Hz) and take only the read part of the array
-        leftQueue.addAll(leftVals)
-        val rightVals = downsampleTo60Hz(rightMeasuredVals.sliceArray(0 until readN/2)).filter { it!=Float.NEGATIVE_INFINITY }
-        rightQueue.addAll(rightVals)
+    /**
+     * Insert just measured values in the queues (in order to be shown)
+     * Automatically ignores negative infinity values and resamples to 60Hz
+     *
+     * @param leftMeasuredValues left channel measured values
+     * @param rightMeasuredValues right channel measured values
+     * @param readN raw number of values read from the buffer (returned by AudioRecord.read())
+     */
+    fun updateQueues(leftMeasuredValues: FloatArray, rightMeasuredValues: FloatArray, readN: Int) {
+        val leftValues = downsampleTo60Hz(leftMeasuredValues.sliceArray(0 until readN/2)).filter { it!=Float.NEGATIVE_INFINITY }     // downsample to 60Hz (from 44100Hz) and take only the read part of the array
+        leftQueue.addAll(leftValues)
+        val rightValues = downsampleTo60Hz(rightMeasuredValues.sliceArray(0 until readN/2)).filter { it!=Float.NEGATIVE_INFINITY }
+        rightQueue.addAll(rightValues)
         Log.d(TAG, "updateQueues: leftQueue size: ${leftQueue.size} rightQueue size: ${rightQueue.size}")
     }
-    
+
+    /**
+     * Add a value at the end of the list of last 5 minutes samples (left channel).
+     * If the list is full, the first element is removed.
+     *
+     * @param newMaxLeft new value to add to the list
+     */
     private fun updateLast5MinDbLeft(newMaxLeft: Float) {
         while (last5MinDbLeftList.size > 1*60*5) { last5MinDbLeftList.removeFirst() }
         last5MinDbLeftList.add(newMaxLeft)
     }
 
+    /**
+     * Add a value at the end of the list of last 5 minutes samples (right channel).
+     * If the list is full, the first element is removed.
+     *
+     * @param newMaxRight new value to add to the list
+     */
     private fun updateLast5MinDbRight(newMaxRight: Float) {
         while (last5MinDbRightList.size > 1*60*5) { last5MinDbRightList.removeFirst() }
         last5MinDbRightList.add(newMaxRight)
     }
 
+    /**
+     * Get the maximum values of the last second samples (left and right channels).
+     *
+     * @return array of two values: left and right maximum values
+     */
     fun getMaxDbLastSec() : FloatArray {
         val maxLeft = lastSecDbLeftList.maxOrNull() ?: if (lastSecDbLeftList.size == 1) lastSecDbLeftList.first() else 0f
         updateLast5MinDbLeft(maxLeft)
@@ -54,6 +79,12 @@ object Values {
         return floatArrayOf(maxLeft, maxRight)
     }
 
+    /**
+     * Returns the first element of the queue and add it to the list of already popped elements (left channel).
+     * Every second the list is emptied and the maximum value is added to the list of last 5 minutes samples.
+     *
+     * @return first element of the left queue
+     */
     fun getFirstFromQueueLeft() : Float? {
         Log.d(TAG, "getFirstFromQueueLeft: leftQueue size: ${leftQueue.size} rightQueue size: ${rightQueue.size}")
         val out = leftQueue.poll()
@@ -73,6 +104,12 @@ object Values {
         return out
     }
 
+    /**
+     * Returns the first element of the queue and add it to the list of already popped elements (right channel).
+     * Every second the list is emptied and the maximum value is added to the list of last 5 minutes samples.
+     *
+     * @return first element of the right queue
+     */
     fun getFirstFromQueueRight() : Float? {
         val out = rightQueue.poll()
         if ( out != null ) {
@@ -92,8 +129,14 @@ object Values {
     }
 
 
-    //TODO maybe do an average
+    /**
+     * Resample the array to 60Hz (from [MeterService.SAMPLE_RATE]).
+     *
+     * @param originalArray array to resample
+     * @return resampled array
+     */
     private fun downsampleTo60Hz(originalArray: FloatArray): FloatArray {
+    //TODO maybe do an average
         val originalSampleRate = MeterService.SAMPLE_RATE
         val targetSampleRate = 60
         val downsampleFactor = originalSampleRate / targetSampleRate
@@ -134,7 +177,13 @@ object Values {
         return downsampledArray
     }
 
-    fun PCMtoDB(pcm: Number) : Float {
+    /**
+     * Convert a PCM value to dB.
+     *
+     * @param pcm value to convert
+     * @return value in dB
+     */
+    fun pcmToDb(pcm: Number) : Float {
         return 20 * log10( (abs(pcm.toFloat()) /32768) / 20e-6f)   // TODO scale? +26?   //TODO HOW TO GET THE CORRECT VALUE??????????
     }
 }

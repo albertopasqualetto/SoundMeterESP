@@ -191,8 +191,8 @@ class MeterService : Service() {
             Log.d(TAG, e.toString())
             return
         }
-        val left = buf.slice(0 until readN step 2).map { Values.PCMtoDB(it) }.toFloatArray()
-        val right = buf.slice(1 until readN step 2).map { Values.PCMtoDB(it) }.toFloatArray()
+        val left = buf.slice(0 until readN step 2).map { Values.pcmToDb(it) }.toFloatArray()
+        val right = buf.slice(1 until readN step 2).map { Values.pcmToDb(it) }.toFloatArray()
         Log.d(TAG, "readLeftRightMeter: left: ${left.size} right: ${right.size}")
         Values.updateQueues(left, right, readN)
     }
