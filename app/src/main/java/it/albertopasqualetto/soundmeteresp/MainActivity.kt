@@ -86,12 +86,14 @@ class MainActivity : ComponentActivity() {
         private val PROGRESS_BAR_HEIGHT = 50.dp
         private val PROGRESS_BAR_WIDTH = 200.dp
 
+        var coldStart = true
+
         fun dBToProgress(dB : Float) : Float {
             return dB/200 // scale from 0dB-200dB to 0-1
         }
     }
 
-//    var isPlaying : Boolean = false // TODO ridondante con isRecording?
+//    var isPlaying : Boolean = false // TODO ridondante con isRecording? probablimente si... tenere in test
 
     @OptIn(ExperimentalPermissionsApi::class)
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -115,7 +117,7 @@ class MainActivity : ComponentActivity() {
                     color = MaterialTheme.colorScheme.background
                 ) {
                     val permissionState = rememberPermissionState(Manifest.permission.RECORD_AUDIO)
-                    if (permissionState.status.isGranted){
+                    if (coldStart && permissionState.status.isGranted){
                         val i = Intent(applicationContext, MeterService::class.java)
                         startForegroundService(i)
 //                        isPlaying = true
@@ -169,6 +171,7 @@ class MainActivity : ComponentActivity() {
         val pagerState = rememberPagerState(initialPage = 0)
         val coroutineScope = rememberCoroutineScope()
 //        var playOrPauseState by remember { mutableStateOf(if(isPlaying) 1 else 0) }
+        Log.d(TAG, "AppContent: isRecording: ${MeterService.isRecording}")  // TODO to be removed (sometimes this is false on rotate but recording, so button does not change)
         var playOrPauseState by remember { mutableStateOf(if(MeterService.isRecording) 1 else 0) }
         val showPermissionDialog = remember { mutableStateOf(false) }
 
@@ -244,9 +247,12 @@ class MainActivity : ComponentActivity() {
                     NoPermissionDialog(openDialog = showPermissionDialog, shouldShowRationale = false)
                 }
             } else {
-                playOrPauseState = 1
+                if (coldStart)
+                    playOrPauseState = 1
+                Log.d(TAG, "AppContent: permission granted (isRecording): ${MeterService.isRecording}") // TODO to be removed (sometimes this is false on rotate but recording, so button does not change)
                 Log.d(TAG, "AppContent: permission granted")
             }
+            coldStart = false
         }
 
         SideEffect {
