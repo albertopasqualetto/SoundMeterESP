@@ -129,8 +129,7 @@ class MainActivity : ComponentActivity() {
 
     override fun onPause() {
         super.onPause()
-        /*recorderThread = null
-        if (meter?.state == AudioRecord.STATE_INITIALIZED && meter?.recordingState == AudioRecord.RECORDSTATE_RECORDING) meter?.stop() ?: Log.d(TAG, "onPause: meter is not recording")*/
+        Log.d(TAG, "onPause!")
         val i = Intent(applicationContext, MeterService::class.java)
         val wasRecording = MeterService.isRecording
         stopService(i)
@@ -155,15 +154,8 @@ class MainActivity : ComponentActivity() {
         Charts.ONE_SEC_RIGHT.redraw()
         Charts.FIVE_MIN_LEFT.redraw()
         Charts.FIVE_MIN_RIGHT.redraw()
-//        if (meter?.state == AudioRecord.STATE_INITIALIZED && meter?.recordingState == AudioRecord.RECORDSTATE_STOPPED) meter?.startRecording() ?: Log.d(TAG, "onResume: meter is not stopped")
     }
 
-    override fun onDestroy() {
-        super.onDestroy()
-        /*if (meter?.state == AudioRecord.STATE_INITIALIZED && meter?.recordingState == AudioRecord.RECORDSTATE_STOPPED) meter?.stop() ?: Log.d(TAG, "onDestroy: meter is not stopped")
-        if (meter?.state == AudioRecord.STATE_INITIALIZED) meter?.release() ?: Log.d(TAG, "onDestroy: meter is not initialized")
-        meter = null*/
-    }
 
     @OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class,
         ExperimentalMaterial3WindowSizeClassApi::class, ExperimentalPermissionsApi::class

@@ -12,12 +12,12 @@ import com.github.mikephil.charting.data.Entry
 import com.github.mikephil.charting.data.LineData
 import com.github.mikephil.charting.data.LineDataSet
 
-@Suppress("UNUSED_EXPRESSION")
+//@Suppress("UNUSED_EXPRESSION")
 enum class Charts {
     ONE_SEC_LEFT, ONE_SEC_RIGHT,
     FIVE_MIN_LEFT, FIVE_MIN_RIGHT;
 
-    lateinit var chart: LineChart
+    private lateinit var chart: LineChart
 
 
     @Composable
@@ -72,12 +72,11 @@ enum class Charts {
                 }
             },
             update = { chart ->
-                updateTrigger  // to trigger recomposition
                 // update chart here
 //                chart.clear()
                 val data: LineData = chart.data
                 val set = data.getDataSetByIndex(0)
-                var newEntry : Entry? = null
+                lateinit var newEntry : Entry
                 Log.d(TAG, "Chart: update $type, ${set.entryCount}, $updateTrigger")
                 try{
                     newEntry = when (type) {
@@ -88,7 +87,7 @@ enum class Charts {
                     }
                     Log.d(TAG, "Chart: newEntry: $newEntry, $type")
                 } catch (e : Exception){
-                    Log.d(TAG, "Chart: exception: $e, $type")
+                    Log.w(TAG, "Chart: exception: $e, $type")
                     return@AndroidView
                 }
 

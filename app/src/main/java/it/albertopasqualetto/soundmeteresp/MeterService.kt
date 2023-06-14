@@ -17,7 +17,7 @@ import android.util.Log
 
 
 class MeterService : Service() {
-    private var wakeLock: PowerManager.WakeLock? = null
+    private lateinit var wakeLock: PowerManager.WakeLock
 
     private lateinit var recordThread: AudioRecordThread
     private lateinit var readThread: AudioReadThread
@@ -181,7 +181,7 @@ class MeterService : Service() {
 
 
     private fun readLeftRightMeter(meter: AudioRecord) {
-        val buf : ShortArray = ShortArray(BUFFER_SIZE)
+        val buf = ShortArray(BUFFER_SIZE)
         var readN = 0
 
         try{

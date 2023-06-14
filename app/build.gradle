@@ -9,7 +9,8 @@ android {
 
     defaultConfig {
         applicationId "it.albertopasqualetto.soundmeteresp"
-        minSdk 31
+        minSdk 31   // .png images and ic_launcher.xml (anydpi-v26) are useless because of higher minSdk
+        //noinspection OldTargetApi since my main device is API 31
         targetSdk 31
         versionCode 1
         versionName "1.0"
@@ -49,17 +50,15 @@ android {
 }
 
 dependencies {
-
     implementation 'androidx.core:core-ktx:1.10.1'
     implementation 'androidx.activity:activity-compose:1.7.2'
     implementation "androidx.compose.ui:ui:$compose_version"
     implementation "androidx.compose.ui:ui-tooling-preview:$compose_version"
     implementation "androidx.compose.material3:material3:$compose_material3_version"
-    implementation "androidx.compose.material:material-icons-extended:1.4.3"    // TODO remove and download single icons
-    implementation "androidx.compose.material3:material3-window-size-class:$compose_material3_version"
-    implementation 'androidx.lifecycle:lifecycle-livedata:2.6.1'
-    implementation 'com.github.PhilJay:MPAndroidChart:v3.1.0'
-    implementation "com.google.accompanist:accompanist-permissions:0.30.1"
+    implementation "androidx.compose.material:material-icons-extended:1.4.3"    // unused icons will be removed by proguard on release build
+    implementation "androidx.compose.material3:material3-window-size-class:$compose_material3_version"  // for getting screen height
+    implementation 'com.github.PhilJay:MPAndroidChart:v3.1.0'   // chart library
+    implementation "com.google.accompanist:accompanist-permissions:0.30.1"  // permissions handling in Compose library
     testImplementation 'junit:junit:4.13.2'
     androidTestImplementation 'androidx.test.ext:junit:1.1.5'
     androidTestImplementation 'androidx.test.espresso:espresso-core:3.5.1'
