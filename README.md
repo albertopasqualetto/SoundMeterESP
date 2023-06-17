@@ -14,7 +14,7 @@ The app is written in Kotlin and uses the [MPAndroidChart](https://github.com/Ph
 
 The app is based on Jetpack Compose for showing the UI and it follows material3 guidelines and style as much as possible.
 
-Its `targetSdk` is API 31 (Android 12) and the `minSdk` is API 31 since my device is running Android 12 (Samsung Galaxy S10). 
+Its `targetSdk` is API 31 (Android 12) since my device is running Android 12 (Samsung Galaxy S10) and the `minSdk` is API 26. 
 It implements the dynamic color theming introduced in Android 12 both in icon and in the app's colors.
 
 The app uses a foreground service to keep the microphone active even when the app is in background so that it can keep measuring the sound level.
