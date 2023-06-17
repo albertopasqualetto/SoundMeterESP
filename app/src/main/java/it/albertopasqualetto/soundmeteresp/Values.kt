@@ -140,40 +140,14 @@ object Values {
      * @return resampled array
      */
     private fun downsampleTo60Hz(originalArray: FloatArray): FloatArray {
-    //TODO maybe do an average
         val originalSampleRate = MeterService.SAMPLE_RATE
         val targetSampleRate = 60
         val downsampleFactor = originalSampleRate / targetSampleRate
-
-        /*val downsampledArray = originalArray
-            .toList()
-            .windowed(downsampleFactor, downsampleFactor, true)
-            .map { window ->
-                window.filter { it!=Float.NEGATIVE_INFINITY }
-                .average().toFloat() }
-            .toFloatArray()*/
-
-        /*return originalArray.asList().chunked(downsampleFactor) { chunk ->
-            chunk.filter { it!=Float.NEGATIVE_INFINITY }
-            .average().toFloat() }.toFloatArray()*/
-
-
         val downsampledArraySize = originalArray.size / downsampleFactor
         val downsampledArray = FloatArray(downsampledArraySize)
 //        Log.d(TAG, "downsampleTo60Hz: originalArray size: ${originalArray.size} downsampledArray size: ${downsampledArray.size}")
 
-        /*var acc=0f
-        var from=0
-        for (i in 0 until downsampledArraySize*downsampleFactor) {
-            acc+=originalArray[i]
-            if (i%downsampleFactor==0) {
-                downsampledArray[from] = acc/downsampleFactor
-                acc=0f
-                from++
-            }
-        }*/
-
-        for (i in 0 until downsampledArraySize) { // FUNZIONANTE
+        for (i in 0 until downsampledArraySize) {
             val originalIndex = (i * downsampleFactor)
             downsampledArray[i] = originalArray[originalIndex]
         }
@@ -188,6 +162,6 @@ object Values {
      * @return value in dB
      */
     fun pcmToDb(pcm: Number) : Float {
-        return 20 * log10( (abs(pcm.toFloat()) /32768) / 20e-6f)   // TODO scale? +26?   //TODO HOW TO GET THE CORRECT VALUE??????????
+        return 20 * log10( (abs(pcm.toFloat()) /32768) / 20e-6f)   // This value is not calibrated
     }
 }

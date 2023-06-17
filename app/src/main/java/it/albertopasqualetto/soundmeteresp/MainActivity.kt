@@ -177,7 +177,7 @@ class MainActivity : ComponentActivity() {
         Column(modifier = Modifier.fillMaxWidth()) {
             CenterAlignedTopAppBar(title = { Text("Sound Meter", maxLines = 1, overflow = TextOverflow.Ellipsis) },
                                     actions = { IconButton(onClick = {
-                                        Log.d(TAG, "click, showPermissionDialog: $showPermissionDialog")
+                                        Log.d(TAG, "click, playOrPauseState: $playOrPauseState, showPermissionDialog: $showPermissionDialog")
                                         if (!permissionState.status.isGranted){
                                             showPermissionDialog.value = true
                                             permissionState.launchPermissionRequest()
@@ -215,7 +215,7 @@ class MainActivity : ComponentActivity() {
                             { when (index) {
                                 0 -> Icon(Icons.Default.Hearing, contentDescription = "Last second")
                                 1 ->Icon(Icons.Default.History, contentDescription = "Last 5 minutes")
-                                else -> Icon(Icons.Default.Star, contentDescription = "")
+                                else -> Icon(Icons.Default.Star, contentDescription = "")   // unused
                         }}} else null
                     )
                 }
@@ -248,7 +248,6 @@ class MainActivity : ComponentActivity() {
             } else {
                 if (coldStart)
                     playOrPauseState = 1
-                Log.d(TAG, "AppContent: permission granted (isRecording): ${MeterService.isRecording}") // TODO to be removed (sometimes this is false on rotate but recording, so button does not change)
                 Log.d(TAG, "AppContent: permission granted")
             }
             coldStart = false

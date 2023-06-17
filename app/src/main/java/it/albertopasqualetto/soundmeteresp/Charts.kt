@@ -64,7 +64,6 @@ enum class Charts {
                     chart.isLongClickable = false
                     chart.isDoubleTapToZoomEnabled = false
 //                    chart.isAutoScaleMinMaxEnabled = true
-//                    chart.setViewPortOffsets(0f, 0f, 0f, 0f)
                     chart.axisLeft.axisMinimum = 0f
                     chart.axisLeft.axisMaximum = 150f
                     chart.xAxis.axisMinimum = 0f
