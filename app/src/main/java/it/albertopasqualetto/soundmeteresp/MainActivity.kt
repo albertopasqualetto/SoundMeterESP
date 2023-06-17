@@ -1,7 +1,6 @@
 package it.albertopasqualetto.soundmeteresp
 
-// min = 0 dB, max = 200 dB TODO ? decidere
-
+// min = 0 dB, max = 120 dB for visualization purposes
 
 // TODO fix layout margins
 
@@ -88,7 +87,7 @@ class MainActivity : ComponentActivity() {
         var coldStart = true
 
         fun dBToProgress(dB : Float) : Float {
-            return dB/200 // scale from 0dB-200dB to 0-1
+            return dB/120 // scale from [0dB-120dB] to [0-1]
         }
     }
 

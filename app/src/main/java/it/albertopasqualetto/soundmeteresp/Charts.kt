@@ -65,7 +65,7 @@ enum class Charts {
                     chart.isDoubleTapToZoomEnabled = false
 //                    chart.isAutoScaleMinMaxEnabled = true
                     chart.axisLeft.axisMinimum = 0f
-                    chart.axisLeft.axisMaximum = 150f
+                    chart.axisLeft.axisMaximum = 120f
                     chart.xAxis.axisMinimum = 0f
                     chart.xAxis.axisMaximum = maxEntries.toFloat()
                     chart.xAxis.setLabelCount(7, true)
