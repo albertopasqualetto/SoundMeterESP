@@ -9,7 +9,7 @@ android {
 
     defaultConfig {
         applicationId "it.albertopasqualetto.soundmeteresp"
-        minSdk 31   // .png images and ic_launcher.xml (anydpi-v26) are useless because of higher minSdk
+        minSdk 26
         //noinspection OldTargetApi since my main device is API 31
         targetSdk 31
         versionCode 1
