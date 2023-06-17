@@ -10,6 +10,7 @@ import android.net.Uri
 import android.os.Bundle
 import android.provider.Settings
 import android.util.Log
+import android.view.WindowManager
 import androidx.activity.ComponentActivity
 import androidx.activity.OnBackPressedCallback
 import androidx.activity.compose.setContent
@@ -84,6 +85,8 @@ class MainActivity : ComponentActivity() {
         private val PROGRESS_BAR_HEIGHT = 50.dp
         private val PROGRESS_BAR_WIDTH = 200.dp
 
+        private var isRunning = false   // used instead of MeterService.isRecording to prevent race conditions
+
         var coldStart = true
 
         fun dBToProgress(dB : Float) : Float {
@@ -91,21 +94,24 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-//    var isPlaying : Boolean = false // TODO ridondante con isRecording? probablimente si... tenere in test
-
     @OptIn(ExperimentalPermissionsApi::class)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON) // keep screen on (besides the wakelock)
 
         Log.d(TAG, "onCreate!")
 
         // Register a callback that calls the finish() method when the back button is pressed.
         this.onBackPressedDispatcher.addCallback(object : OnBackPressedCallback(true) {
             override fun handleOnBackPressed() {
+                val i = Intent(applicationContext, MeterService::class.java)
+                stopService(i)
+                coldStart = true
                 finish()
             }
         })
 
+        Log.d(TAG, "onCreate: coldStart = $coldStart")
 
         setContent {
             SoundMeterESPTheme {
@@ -115,11 +121,14 @@ class MainActivity : ComponentActivity() {
                     color = MaterialTheme.colorScheme.background
                 ) {
                     val permissionState = rememberPermissionState(Manifest.permission.RECORD_AUDIO)
-                    if (coldStart && permissionState.status.isGranted){
-                        val i = Intent(applicationContext, MeterService::class.java)
-                        startForegroundService(i)
-//                        isPlaying = true
-                        Log.d(TAG, "onCreate: start service")
+                    if (coldStart){
+                        Values.resetAll()
+                        if(permissionState.status.isGranted) {
+                            val i = Intent(applicationContext, MeterService::class.java)
+                            startForegroundService(i)
+                            isRunning = true
+                            Log.d(TAG, "onCreate: start service")
+                        }
                     }
                     AppContent(permissionState)
                 }
@@ -131,9 +140,8 @@ class MainActivity : ComponentActivity() {
         super.onPause()
         Log.d(TAG, "onPause!")
         val i = Intent(applicationContext, MeterService::class.java)
-        val wasRecording = MeterService.isRecording
+        val wasRecording = isRunning
         stopService(i)
-//        if (isPlaying && !isFinishing) {
         if (wasRecording && !isFinishing) {
             i.putExtra(MeterService.MAIN_ACTIVITY_PAUSE, true)
             startForegroundService(i)
@@ -143,8 +151,7 @@ class MainActivity : ComponentActivity() {
     override fun onResume() {
         super.onResume()
         Log.d(TAG, "onResume!")
-//        if (isPlaying) {
-        if (MeterService.isRecording) {
+        if (isRunning) {
             val i = Intent(applicationContext, MeterService::class.java)
             startForegroundService(i)
         }
@@ -168,11 +175,8 @@ class MainActivity : ComponentActivity() {
         val tabs = listOf("Last second", "5 minutes History")
         val pagerState = rememberPagerState(initialPage = 0)
         val coroutineScope = rememberCoroutineScope()
-//        var playOrPauseState by remember { mutableStateOf(if(isPlaying) 1 else 0) }
-        Log.d(TAG, "AppContent: isRecording: ${MeterService.isRecording}")  // TODO to be removed (sometimes this is false on rotate but recording, so button does not change)
-        var playOrPauseState by remember { mutableStateOf(if(MeterService.isRecording) 1 else 0) }
+        var playOrPauseState by remember { mutableStateOf(if(isRunning) 1 else 0) }
         val showPermissionDialog = remember { mutableStateOf(false) }
-
         Column(modifier = Modifier.fillMaxWidth()) {
             CenterAlignedTopAppBar(title = { Text("Sound Meter", maxLines = 1, overflow = TextOverflow.Ellipsis) },
                                     actions = { IconButton(onClick = {
@@ -184,11 +188,11 @@ class MainActivity : ComponentActivity() {
                                             if (playOrPauseState == 0){ // paused
                                                 val i = Intent(applicationContext, MeterService::class.java)
                                                 startForegroundService(i)
-//                                                isPlaying = true
+                                                isRunning = true
                                             } else { // playing
                                                 val i = Intent(applicationContext, MeterService::class.java)
                                                 stopService(i)
-//                                                isPlaying = false
+                                                isRunning = false
                                             }
                                             playOrPauseState = if (playOrPauseState==0) 1 else 0
                                         }
@@ -233,7 +237,7 @@ class MainActivity : ComponentActivity() {
             if (!permissionState.status.isGranted){
                 Log.d(TAG, "AppContent: permission NOT granted")
                 playOrPauseState = 0
-//                isPlaying = false
+                isRunning = false
                 val i = Intent(applicationContext, MeterService::class.java)
                 stopService(i)
                 showPermissionDialog.value = true
@@ -309,7 +313,7 @@ class MainActivity : ComponentActivity() {
         LaunchedEffect(key1 = Unit) {
             var countToSec = 0  // count to 16,6 = 1 sec
             while (true) {
-                if (MeterService.isRecording) {
+                if (isRunning) {
                     countToSec++
                     if (countToSec >= 62) { // 1000/16 ~= 62
                         countToSec = 0
@@ -344,14 +348,15 @@ class MainActivity : ComponentActivity() {
                 Text(text = "Left channel", fontWeight = FontWeight.Bold)
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.Center, modifier = modifier.fillMaxWidth()) {
                     Text(text = "$leftdb dB", modifier= Modifier
-                        .padding(2.dp, 0.dp, 0.dp, 0.dp)
+                        .padding(9.dp, 0.dp, 0.dp, 0.dp)
                         .weight(1f))
                     LinearProgressIndicator(
                         modifier = modifier
                             .semantics(mergeDescendants = true) {}
                             .requiredHeight(PROGRESS_BAR_HEIGHT)
                             .requiredWidth(PROGRESS_BAR_WIDTH)
-                            .weight(2f),
+                            .weight(2f)
+                            .padding(0.dp, 0.dp, 17.dp, 0.dp),
                         progress = progressLeft,
                     )
                 }
@@ -371,14 +376,15 @@ class MainActivity : ComponentActivity() {
                 Text(text = "Right channel", fontWeight = FontWeight.Bold)
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceAround, modifier = modifier.fillMaxWidth()) {
                     Text(text = "$rightdb dB", modifier= Modifier
-                        .padding(2.dp, 0.dp, 0.dp, 0.dp)
+                        .padding(9.dp, 0.dp, 0.dp, 0.dp)
                         .weight(1f))
                     LinearProgressIndicator(
                         modifier = modifier
                             .semantics(mergeDescendants = true) {}
                             .requiredHeight(PROGRESS_BAR_HEIGHT)
                             .requiredWidth(PROGRESS_BAR_WIDTH)
-                            .weight(1.5f),
+                            .weight(1.5f)
+                            .padding(0.dp, 0.dp, 17.dp, 0.dp),
                         progress = progressRight,
                     )
                 }
@@ -424,7 +430,7 @@ class MainActivity : ComponentActivity() {
 
         LaunchedEffect(key1 = Unit, block = {
             while (true){
-                if(MeterService.isRecording){
+                if(isRunning){
                     Log.d(TAG, "Launched effect: FiveMinView")
 
                     // used to trigger recomposition:

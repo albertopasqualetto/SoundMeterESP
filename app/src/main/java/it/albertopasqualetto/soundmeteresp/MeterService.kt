@@ -47,7 +47,7 @@ class MeterService : Service() {
     override fun onStartCommand(intent: Intent, flags: Int, startId: Int): Int {
         if (isRecording){
             Log.d(TAG, "Service already running")
-            wakeLock?.acquire() // re-acquiring wakelock without timeout since now it is on screen
+            wakeLock.acquire() // re-acquiring wakelock without timeout since now it is on screen
             return START_NOT_STICKY
         }
 
@@ -95,6 +95,7 @@ class MeterService : Service() {
 
     override fun onDestroy()
     {
+        Log.d(TAG, "onDestroy!")
         readThread.stopReading()
         recordThread.stopRecording()
 
@@ -106,7 +107,7 @@ class MeterService : Service() {
 
         stopForeground(STOP_FOREGROUND_REMOVE)
 
-        wakeLock?.release()
+        wakeLock.release()
 
         super.onDestroy()
     }
@@ -123,7 +124,7 @@ class MeterService : Service() {
             meter?.startRecording()
 
             try{
-                sleep(1000)
+                sleep(500)
             } catch (e: InterruptedException) {
                 currentThread().interrupt()
             }
@@ -152,7 +153,7 @@ class MeterService : Service() {
         override fun run() {
             super.run()
             try{
-                sleep(2000)
+                sleep(1000)
             } catch (e: InterruptedException) {
                 currentThread().interrupt()
             }
@@ -160,15 +161,19 @@ class MeterService : Service() {
             var countToSec = 0  // count to 16,6 = 1 sec
             while(isReading){
                 countToSec++
-                if (countToSec >= 62) { // 1000/16 ~= 62
-                    countToSec = 0
-                    Values.getMaxDbLastSec()
-//                    Log.d(TAG, "Saved last second's data")
-                }
+                try {
+                    if (countToSec >= 62) { // 1000/16 ~= 62
+                        countToSec = 0
+                        Values.getMaxDbLastSec()
+//                        Log.d(TAG, "Saved last second's data")
+                    }
 
-                Values.getFirstFromQueueLeft()
-                Values.getFirstFromQueueRight()
-//                Log.d(TAG, "Saved real time data")
+                    Values.getFirstFromQueueLeft()
+                    Values.getFirstFromQueueRight()
+//                    Log.d(TAG, "Saved real time data")
+                } catch (e: ConcurrentModificationException) {
+                    Log.d(TAG, "ConcurrentModificationException")   // happens when the queue is empty, but it is not a problem
+                }
                 sleep(16)   // ~16 ms = 60 Hz
             }
         }
@@ -205,7 +210,7 @@ class MeterService : Service() {
         private const val CHANNEL_ID = "soundmeteresp"
         const val MAIN_ACTIVITY_PAUSE = "MainActivityPause"
 
-        var isRecording = false
+        private var isRecording = false
 
         private val TAG = MeterService::class.simpleName
 

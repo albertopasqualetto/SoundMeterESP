@@ -133,6 +133,20 @@ object Values {
     }
 
 
+    fun resetAll() {
+        leftQueue.clear()
+        rightQueue.clear()
+        lastLeft = 0f
+        lastRight = 0f
+        lastSecDbLeftList.clear()
+        lastSecDbRightList.clear()
+        leftCount = 0
+        rightCount = 0
+        last5MinDbLeftList.clear()
+        last5MinDbRightList.clear()
+    }
+
+
     /**
      * Resample the array to 60Hz (from [MeterService.SAMPLE_RATE]).
      *
