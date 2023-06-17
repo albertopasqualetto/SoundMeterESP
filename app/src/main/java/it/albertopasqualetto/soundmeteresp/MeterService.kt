@@ -14,10 +14,13 @@ import android.media.MediaRecorder
 import android.os.IBinder
 import android.os.PowerManager
 import android.util.Log
+import java.util.Timer
+import java.util.TimerTask
 
 
 class MeterService : Service() {
     private lateinit var wakeLock: PowerManager.WakeLock
+    private lateinit var timer: Timer
 
     private lateinit var recordThread: AudioRecordThread
     private lateinit var readThread: AudioReadThread
@@ -48,6 +51,7 @@ class MeterService : Service() {
         if (isRecording){
             Log.d(TAG, "Service already running")
             wakeLock.acquire() // re-acquiring wakelock without timeout since now it is on screen
+            if (this::timer.isInitialized) timer.cancel()
             return START_NOT_STICKY
         }
 
@@ -80,6 +84,16 @@ class MeterService : Service() {
                     acquire()   // starting service at startup or with play button
             }
         }
+        if (intent.getBooleanExtra(MAIN_ACTIVITY_PAUSE, false)) {
+            timer = Timer(true)
+            val timerTask: TimerTask = object : TimerTask() {
+                override fun run() {
+                    Log.d(TAG, "TimerTask: stopSelf")
+                    stopSelf()
+                }
+            }
+            timer.schedule(timerTask, 0, 600000)    // stop service after 10 minutes of timeout if MainActivity has been paused
+        }
 
 
         Log.d(TAG, "Start recording thread")
@@ -107,6 +121,7 @@ class MeterService : Service() {
 
         stopForeground(STOP_FOREGROUND_REMOVE)
 
+        if (this::timer.isInitialized) timer.cancel()
         wakeLock.release()
 
         super.onDestroy()
