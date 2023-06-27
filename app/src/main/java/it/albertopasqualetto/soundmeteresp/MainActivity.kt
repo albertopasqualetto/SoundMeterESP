@@ -2,7 +2,6 @@ package it.albertopasqualetto.soundmeteresp
 
 // min = 0 dB, max = 120 dB for visualization purposes
 
-// TODO fix layout margins
 
 import android.Manifest
 import android.content.Intent
@@ -49,6 +48,7 @@ import androidx.compose.material3.TabRow
 import androidx.compose.material3.Text
 import androidx.compose.material3.windowsizeclass.ExperimentalMaterial3WindowSizeClassApi
 import androidx.compose.material3.windowsizeclass.WindowHeightSizeClass
+import androidx.compose.material3.windowsizeclass.WindowSizeClass
 import androidx.compose.material3.windowsizeclass.calculateWindowSizeClass
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -62,14 +62,17 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalInspectionMode
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
 import androidx.core.os.bundleOf
 import com.google.accompanist.permissions.ExperimentalPermissionsApi
 import com.google.accompanist.permissions.PermissionState
+import com.google.accompanist.permissions.PermissionStatus
 import com.google.accompanist.permissions.isGranted
 import com.google.accompanist.permissions.rememberPermissionState
 import com.google.accompanist.permissions.shouldShowRationale
@@ -167,10 +170,10 @@ class MainActivity : ComponentActivity() {
     @OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class,
         ExperimentalMaterial3WindowSizeClassApi::class, ExperimentalPermissionsApi::class
     )
-//    @Preview(showBackground = true)
+    @Preview(name = "Vertical AppContent", showBackground = true)   // if horizontal preview is wanted, then also OneSecView and FiveMinView previews must be horizontal (or rewrite code to handle this case)
     @Composable
-    fun AppContent(permissionState: PermissionState) {
-        val windowSizeClass = calculateWindowSizeClass(this)
+    fun AppContent(permissionState: PermissionState = FakePermissionState(PermissionStatus.Granted)) {
+        val windowSizeClass = if(!LocalInspectionMode.current) calculateWindowSizeClass(this) else WindowSizeClass.calculateFromSize(DpSize(360.dp, 760.dp))   // fallback WindowSizeClass used for preview
 
         val tabs = listOf("Last second", "5 minutes History")
         val pagerState = rememberPagerState(initialPage = 0)
@@ -265,6 +268,7 @@ class MainActivity : ComponentActivity() {
     }
 
     @OptIn(ExperimentalMaterial3WindowSizeClassApi::class)
+    @Preview(name = "Vertical OneSecView", showBackground = true)
     @Composable
     fun OneSecView() {
         var leftdb by rememberSaveable { mutableStateOf("Waiting left...") }
@@ -284,7 +288,7 @@ class MainActivity : ComponentActivity() {
         var updateChartOneLeft by remember { mutableStateOf(0f) }
         var updateChartOneRight by remember { mutableStateOf(0f) }
 
-        val windowSizeClass = calculateWindowSizeClass(this)
+        val windowSizeClass = if(!LocalInspectionMode.current) calculateWindowSizeClass(this) else WindowSizeClass.calculateFromSize(DpSize(360.dp, 760.dp))   // fallback WindowSizeClass used for preview
         if (windowSizeClass.heightSizeClass != WindowHeightSizeClass.Compact) {
             Log.d(TAG, "In column arrangement")
             Column(
@@ -396,13 +400,14 @@ class MainActivity : ComponentActivity() {
 
 
     @OptIn(ExperimentalMaterial3WindowSizeClassApi::class)
+    @Preview(name = "Vertical FiveMinView", showBackground = true)
     @Composable
     fun FiveMinView(){
         var onUpdateChartFiveLeft by remember { mutableStateOf(0f) }
         var onUpdateChartFiveRight by remember { mutableStateOf(0f) }
 
 
-        val windowSizeClass = calculateWindowSizeClass(this)
+        val windowSizeClass = if(!LocalInspectionMode.current) calculateWindowSizeClass(this) else WindowSizeClass.calculateFromSize(DpSize(360.dp, 760.dp))   // fallback WindowSizeClass used for preview
         if (windowSizeClass.heightSizeClass != WindowHeightSizeClass.Compact) {
             Log.d(TAG, "In column arrangement")
             Column(
@@ -509,6 +514,13 @@ class MainActivity : ComponentActivity() {
         )
     }
 
+    @ExperimentalPermissionsApi
+    private class FakePermissionState(  // fake permission state to be used in preview
+        override val status: PermissionStatus,
+        override val permission: String = "Not used, this is fake!"
+    ): PermissionState {
+        override fun launchPermissionRequest(): Unit = throw NotImplementedError()
+    }
 
 }
 
