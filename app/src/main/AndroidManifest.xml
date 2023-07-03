@@ -31,7 +31,7 @@
             android:permission="android.permission.RECORD_AUDIO"
             android:foregroundServiceType="microphone">
             <intent-filter>
-                <action android:name="com.example.soundmeteresp.SoundMeterService" />
+                <action android:name="it.albertopasqualetto.soundmeteresp.SoundMeterService" />
             </intent-filter>
         </service>
     </application>
