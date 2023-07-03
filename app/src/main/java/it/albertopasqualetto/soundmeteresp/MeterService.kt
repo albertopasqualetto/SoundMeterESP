@@ -90,9 +90,10 @@ class MeterService : Service() {
                 override fun run() {
                     Log.d(TAG, "TimerTask: stopSelf")
                     stopSelf()
+                    timer.cancel()
                 }
             }
-            timer.schedule(timerTask, 0, 600000)    // stop service after 10 minutes of timeout if MainActivity has been paused
+            timer.schedule(timerTask, 600000)    // stop service after 10 minutes of timeout if MainActivity has been paused
         }
 
 
@@ -134,7 +135,9 @@ class MeterService : Service() {
         }
 
         override fun run() {
+            super.run()
             if (meter == null) Log.d(TAG, "rec: meter is null")
+            Log.d(TAG, "Starting AudioRecordThread")
             isRecording = true
             meter?.startRecording()
 
@@ -167,6 +170,7 @@ class MeterService : Service() {
 
         override fun run() {
             super.run()
+            Log.d(TAG, "Starting AudioReadThread")
             try{
                 sleep(1000)
             } catch (e: InterruptedException) {

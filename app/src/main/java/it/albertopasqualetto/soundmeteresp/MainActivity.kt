@@ -155,6 +155,7 @@ class MainActivity : ComponentActivity() {
         super.onResume()
         Log.d(TAG, "onResume!")
         if (isRunning) {
+            Log.d(TAG, "onResume: restart service (isRunning)")
             val i = Intent(applicationContext, MeterService::class.java)
             startForegroundService(i)
         }
@@ -290,7 +291,7 @@ class MainActivity : ComponentActivity() {
 
         val windowSizeClass = if(!LocalInspectionMode.current) calculateWindowSizeClass(this) else WindowSizeClass.calculateFromSize(DpSize(360.dp, 760.dp))   // fallback WindowSizeClass used for preview
         if (windowSizeClass.heightSizeClass != WindowHeightSizeClass.Compact) {
-            Log.d(TAG, "In column arrangement")
+            Log.d(TAG, "In Column arrangement")
             Column(
                 modifier = Modifier
                     .fillMaxSize()
@@ -301,7 +302,7 @@ class MainActivity : ComponentActivity() {
                 RightOneSecView(rightdb, animatedProgressRight, updateChartOneRight, modifier= Modifier.weight(1f))
             }
         } else {
-            Log.d(TAG, "In row arrangement")
+            Log.d(TAG, "In Row arrangement")
             Row(
                 modifier = Modifier
                     .fillMaxSize()
@@ -409,7 +410,7 @@ class MainActivity : ComponentActivity() {
 
         val windowSizeClass = if(!LocalInspectionMode.current) calculateWindowSizeClass(this) else WindowSizeClass.calculateFromSize(DpSize(360.dp, 760.dp))   // fallback WindowSizeClass used for preview
         if (windowSizeClass.heightSizeClass != WindowHeightSizeClass.Compact) {
-            Log.d(TAG, "In column arrangement")
+            Log.d(TAG, "In Column arrangement")
             Column(
                 modifier = Modifier
                     .fillMaxSize()
