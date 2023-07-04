@@ -90,6 +90,7 @@ class MeterService : Service() {
                 override fun run() {
                     Log.d(TAG, "TimerTask: stopSelf")
                     stopSelf()
+                    MainActivity.coldStart = true
                     timer.cancel()
                 }
             }

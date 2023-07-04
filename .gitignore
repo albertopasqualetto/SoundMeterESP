@@ -15,5 +15,4 @@
 local.properties
 
 # Project exclude paths
-/gradle/
 .idea/deploymentTargetDropDown.xml

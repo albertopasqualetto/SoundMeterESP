@@ -32,12 +32,13 @@ object Values {
 
 
     /**
-     * Insert just measured values in the queues (in order to be shown)
-     * Automatically ignores negative infinity values and resamples to 60Hz
+     * Insert just measured values in the queues (in order to be shown).
+     *
+     * Automatically ignores negative infinity values and resamples to 60Hz.
      *
      * @param leftMeasuredValues left channel measured values
      * @param rightMeasuredValues right channel measured values
-     * @param readN raw number of values read from the buffer (returned by AudioRecord.read())
+     * @param readN raw number of values read from the buffer (returned by [`AudioRecord.read()`)
      */
     fun updateQueues(leftMeasuredValues: FloatArray, rightMeasuredValues: FloatArray, readN: Int) {
         val leftValues = downsampleTo60Hz(leftMeasuredValues.sliceArray(0 until readN/2)).filter { it!=Float.NEGATIVE_INFINITY }     // downsample to 60Hz (from 44100Hz) and take only the read part of the array

@@ -295,7 +295,8 @@ class MainActivity : ComponentActivity() {
             Column(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(12.dp), verticalArrangement = Arrangement.SpaceEvenly
+                    .padding(12.dp),
+                verticalArrangement = Arrangement.SpaceEvenly
             ) {  // outline
                 LeftOneSecView(leftdb, animatedProgressLeft, updateChartOneLeft, modifier= Modifier.weight(1f))
                 Spacer(modifier=Modifier.weight(0.1f))
@@ -306,7 +307,8 @@ class MainActivity : ComponentActivity() {
             Row(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(12.dp), horizontalArrangement = Arrangement.SpaceEvenly
+                    .padding(12.dp),
+                horizontalArrangement = Arrangement.SpaceEvenly
             ) {  // outline
                 LeftOneSecView(leftdb, animatedProgressLeft, updateChartOneLeft, modifier= Modifier.weight(1f))
                 Spacer(modifier=Modifier.weight(0.1f))
@@ -414,7 +416,8 @@ class MainActivity : ComponentActivity() {
             Column(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(12.dp), verticalArrangement = Arrangement.SpaceEvenly
+                    .padding(12.dp),
+                verticalArrangement = Arrangement.SpaceEvenly
             ) {  // outline
                 LeftFiveMinView(onUpdateChartFiveLeft, modifier= Modifier.weight(1f))
                 Spacer(modifier = Modifier.weight(0.05f))
@@ -425,7 +428,8 @@ class MainActivity : ComponentActivity() {
             Row(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(12.dp), horizontalArrangement = Arrangement.SpaceEvenly
+                    .padding(12.dp),
+                horizontalArrangement = Arrangement.SpaceEvenly
             ) {  // outline
                 LeftFiveMinView(onUpdateChartFiveLeft, modifier= Modifier.weight(1f))
                 Spacer(modifier = Modifier.weight(0.05f))
@@ -480,7 +484,6 @@ class MainActivity : ComponentActivity() {
     @Preview
     @Composable
     fun NoPermissionDialog(openDialog: MutableState<Boolean> = mutableStateOf(true), shouldShowRationale: Boolean = true) {
-//        var openDialog by remember { mutableStateOf(true) }
         Log.d(TAG, "NoPermissionDialog, onShowPermissionDialog: $openDialog")
 
         if (!openDialog.value) return
